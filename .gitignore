@@ -1,3 +1,9 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Unity
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
@@ -5,5 +11,36 @@
 [Bb]uilds/
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
-*.log
-.DS_Store
+MemoryCaptures/
+Recordings/
+
+# Unity generated
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# Blender backup files
+*.blend1
+*.blend2
+*.blend@
+*.blend~
+
+# Keep exported builds out of git
+Builds/*
+!Builds/.gitkeep
+
+# Steam local files
+steam_appid.txt
