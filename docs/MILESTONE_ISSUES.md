@@ -19,14 +19,15 @@ when creating GitHub issues.
 ## Issues
 
 ### M0 — Repository and Unity Setup
-- [ ] 1. Create Unity project skeleton
-- [ ] 2. Add Unity/macOS `.gitignore`
-- [ ] 3. Configure URP
-- [ ] 4. Configure Unity Input System
-- [ ] 5. Create base folder structure
-- [ ] 6. Create ScriptableObject data types
-- [ ] 7. Create initial Bootstrap scene
-- [ ] 8. Add Windows build instructions
+- [x] 1. Create Unity project skeleton — under `Unity/StackUpPrototype/`
+- [x] 2. Add Unity/macOS `.gitignore`
+- [~] 3. Configure URP — packages + global settings in place; verify the URP
+      asset is the active render pipeline in-editor (project ships a 2D URP template)
+- [x] 4. Configure Unity Input System — package enabled (`activeInputHandler: 2`)
+- [x] 5. Create base folder structure — `Assets/_StackUp/` tree
+- [x] 6. Create ScriptableObject data types — Section 11 model (`StackUp` namespace)
+- [x] 7. Create initial Bootstrap scene — `Bootstrap.unity` + `GameManager`, build index 0
+- [x] 8. Add Windows build instructions — `docs/BUILD_WINDOWS.md`
 
 ### M1 — Vertical Slice
 - [ ] 9. Implement PlayerController movement
