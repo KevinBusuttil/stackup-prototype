@@ -240,9 +240,9 @@ namespace StackUp
 
         private void WireInteractables()
         {
-            foreach (var slot in FindObjectsByType<RackSlot>(FindObjectsSortMode.None)) slot.Init(grid, orders);
-            foreach (var dock in FindObjectsByType<DockLane>(FindObjectsSortMode.None)) dock.Init(orders);
-            foreach (var vs in FindObjectsByType<VerificationStation>(FindObjectsSortMode.None)) vs.Init(orders);
+            foreach (var slot in FindObjectsByType<RackSlot>(FindObjectsInactive.Exclude)) slot.Init(grid, orders);
+            foreach (var dock in FindObjectsByType<DockLane>(FindObjectsInactive.Exclude)) dock.Init(orders);
+            foreach (var vs in FindObjectsByType<VerificationStation>(FindObjectsInactive.Exclude)) vs.Init(orders);
         }
 
         private void BuildUi()

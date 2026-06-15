@@ -19,7 +19,7 @@ namespace StackUp
         public void Build()
         {
             slots.Clear();
-            foreach (var marker in FindObjectsByType<SlotMarker>(FindObjectsSortMode.None))
+            foreach (var marker in FindObjectsByType<SlotMarker>(FindObjectsInactive.Exclude))
             {
                 if (string.IsNullOrEmpty(marker.SlotId))
                 {
