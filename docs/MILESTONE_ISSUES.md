@@ -64,10 +64,15 @@ when creating GitHub issues.
 - [x] 30. Implement level progression save — `SaveService` (JSON: progress + highscores)
 - [x] 31. Create 8 campaign level definitions — `LevelLibrary` / `LevelConfig`
 - [x] 32. Implement endless mode — `OrderManager` waves + `LevelLibrary.Endless`
-- [~] 33. Create SKU pool and sample item prefabs — SKU pool done; item prefabs are
-      primitives (real prefabs need art)
-- [ ] 34. Import robot worker variants — deferred (needs Blender models)
-- [ ] 35. Create modular warehouse prefabs — deferred (needs art); primitives for now
+- [~] 33. Create SKU pool and sample item prefabs — SKU pool done; item models
+      (Box S/M/L, Case, Bag) generated in Blender; prefab wiring is in-editor
+- [~] 34. Import robot worker variants — 3 robot models generated (.glb + .fbx via
+      Blender pipeline); Unity import + prefab is an in-editor step
+- [~] 35. Create modular warehouse prefabs — 11 warehouse modules generated;
+      Unity import + prefab is an in-editor step
+
+> Art pipeline (Blender → glb/fbx): `Blender/scripts/` generators export 21 assets
+> to `Blender/exports/`. See docs/ART_PIPELINE.md.
 - [x] 36. Improve HUD for job queue and SLA timers — HUD shows orders, SLA countdown, wave
 
 > Flow: Bootstrap → MainMenu (Campaign / Endless) → Game scene (data-driven by
