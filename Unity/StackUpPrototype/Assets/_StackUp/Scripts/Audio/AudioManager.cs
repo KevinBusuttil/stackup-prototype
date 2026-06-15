@@ -75,7 +75,7 @@ namespace StackUp
             var a = Ensure();
             if (a.ambience.isPlaying) return;
             a.ambience.clip = a.Hum();
-            a.ambience.volume = Volume() * 0.25f;
+            a.ambience.volume = MusicVolume() * 0.25f;
             a.ambience.Play();
         }
 
@@ -84,10 +84,23 @@ namespace StackUp
             if (instance != null) instance.ambience.Stop();
         }
 
+        /// <summary>Re-applies volumes to looping sources; call after a settings change.</summary>
+        public static void RefreshMix()
+        {
+            if (instance != null && instance.ambience != null)
+                instance.ambience.volume = MusicVolume() * 0.25f;
+        }
+
         private static float Volume()
         {
             var s = SaveService.Settings;
             return Mathf.Clamp01(s.MasterVolume) * Mathf.Clamp01(s.SfxVolume);
+        }
+
+        private static float MusicVolume()
+        {
+            var s = SaveService.Settings;
+            return Mathf.Clamp01(s.MasterVolume) * Mathf.Clamp01(s.MusicVolume);
         }
 
         private static AudioClip Tone(string name, float freq, float dur, float vol, bool square = false, float endFreq = -1f)
