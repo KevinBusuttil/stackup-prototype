@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 
 namespace StackUp
 {
@@ -199,12 +201,23 @@ namespace StackUp
 
         private void BuildUi()
         {
+            EnsureEventSystem();
+
             hud = new GameObject("HUD").AddComponent<HUD>();
             hud.Init(orders, game, player);
 
             result = new GameObject("ResultScreen").AddComponent<ResultScreen>();
             result.Init();
             orders.OrderCompleted += OnOrderCompleted;
+        }
+
+        /// <summary>UI buttons need an EventSystem + input module to receive pointer/controller events.</summary>
+        private static void EnsureEventSystem()
+        {
+            if (EventSystem.current != null) return;
+            var go = new GameObject("EventSystem");
+            go.AddComponent<EventSystem>();
+            go.AddComponent<InputSystemUIInputModule>();
         }
 
         private void StartLevel()

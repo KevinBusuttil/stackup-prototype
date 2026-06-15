@@ -14,9 +14,9 @@ namespace StackUp
         public IInteractable Current { get; private set; }
 
         private PlayerController player;
+        // Resolved lazily so component add-order at runtime does not matter.
+        private PlayerController Player => player != null ? player : (player = GetComponent<PlayerController>());
         private readonly Collider[] hits = new Collider[16];
-
-        private void Awake() => player = GetComponent<PlayerController>();
 
         private void Update() => Current = FindBest();
 
@@ -32,7 +32,7 @@ namespace StackUp
                 var col = hits[i];
                 if (col == null) continue;
                 var interactable = col.GetComponentInParent<IInteractable>();
-                if (interactable == null || !interactable.CanInteract(player)) continue;
+                if (interactable == null || !interactable.CanInteract(Player)) continue;
 
                 float d = (col.transform.position - transform.position).sqrMagnitude;
                 if (d < bestSqr) { bestSqr = d; best = interactable; }
