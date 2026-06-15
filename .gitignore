@@ -44,3 +44,7 @@ Builds/*
 
 # Steam local files
 steam_appid.txt
+
+# Python (Blender script bytecode)
+__pycache__/
+*.pyc

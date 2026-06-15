@@ -64,10 +64,15 @@ when creating GitHub issues.
 - [x] 30. Implement level progression save — `SaveService` (JSON: progress + highscores)
 - [x] 31. Create 8 campaign level definitions — `LevelLibrary` / `LevelConfig`
 - [x] 32. Implement endless mode — `OrderManager` waves + `LevelLibrary.Endless`
-- [~] 33. Create SKU pool and sample item prefabs — SKU pool done; item prefabs are
-      primitives (real prefabs need art)
-- [ ] 34. Import robot worker variants — deferred (needs Blender models)
-- [ ] 35. Create modular warehouse prefabs — deferred (needs art); primitives for now
+- [~] 33. Create SKU pool and sample item prefabs — SKU pool done; item models
+      (Box S/M/L, Case, Bag) generated in Blender; prefab wiring is in-editor
+- [~] 34. Import robot worker variants — 3 robot models generated (.glb + .fbx via
+      Blender pipeline); Unity import + prefab is an in-editor step
+- [~] 35. Create modular warehouse prefabs — 11 warehouse modules generated;
+      Unity import + prefab is an in-editor step
+
+> Art pipeline (Blender → glb/fbx): `Blender/scripts/` generators export 21 assets
+> to `Blender/exports/`. See docs/ART_PIPELINE.md.
 - [x] 36. Improve HUD for job queue and SLA timers — HUD shows orders, SLA countdown, wave
 
 > Flow: Bootstrap → MainMenu (Campaign / Endless) → Game scene (data-driven by
@@ -87,14 +92,17 @@ when creating GitHub issues.
 > Steamworks.NET implementation via `SteamServices.Init(...)` with no gameplay changes.
 
 ### M5 — Polish and Steam Deck Readiness
-- [ ] 43. Implement occluder fade system
-- [ ] 44. Add controller-first menu navigation
-- [ ] 45. Implement settings menu
-- [ ] 46. Add UI scale option
-- [ ] 47. Add core SFX
-- [ ] 48. Add feedback effects
-- [ ] 49. Perform Steam Deck readability pass
-- [ ] 50. Perform performance pass
+- [x] 43. Implement occluder fade system — `OccluderFadeSystem` + `FadeableObject`
+- [x] 44. Add controller-first menu navigation — `UiKit` (default input actions + select-first)
+- [x] 45. Implement settings menu — `SettingsMenu` (UI scale + volumes, persisted)
+- [x] 46. Add UI scale option — `SettingsData.UiScale` (100–160%) via `UiKit.ApplyScale`
+- [x] 47. Add core SFX — `AudioManager` (procedurally-synthesised tones; no audio assets yet)
+- [x] 48. Add feedback effects — `FeedbackSystem` (pooled popups) + `LevelFx`
+- [~] 49. Steam Deck readability pass — 1280×720 reference + UI scale; needs on-device check
+- [~] 50. Performance pass — popup pooling done; full profiling pass is in-editor work
+
+> Audio uses runtime-generated tones as placeholders (real SFX assets later).
+> Occluder fade is wired to racks; walls/scenery use the same `FadeableObject`.
 
 ### M6 — Release Preparation (Later)
 - [ ] 51. Integrate Steamworks
