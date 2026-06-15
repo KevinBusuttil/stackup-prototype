@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
 
 namespace StackUp
 {
@@ -66,6 +64,13 @@ namespace StackUp
             telemetry = new GameObject("SteamTelemetry").AddComponent<SteamTelemetry>();
             telemetry.Init(orders, score, game, player.Tote, cfg, campaignIndex);
             startTime = Time.time;
+
+            var feedback = new GameObject("FeedbackSystem").AddComponent<FeedbackSystem>();
+            feedback.Init();
+            var fx = new GameObject("LevelFx").AddComponent<LevelFx>();
+            fx.Init(orders, score, player.Tote, feedback);
+            AudioManager.Ensure();
+            AudioManager.StartAmbience();
 
             WireInteractables();
             BuildUi();
@@ -206,6 +211,7 @@ namespace StackUp
             marker.ZoneId = "ZONE-A";
             marker.InitialStock.Add(new SlotMarker.StockEntry { SkuId = sku, Quantity = qty });
             go.AddComponent<RackSlot>();
+            go.AddComponent<FadeableObject>(); // racks fade when they block the camera (Section 8)
         }
 
         private WarehouseGrid BuildGrid()
@@ -283,6 +289,10 @@ namespace StackUp
             var rig = cam.GetComponent<HighAngleCameraRig>();
             if (rig == null) rig = cam.gameObject.AddComponent<HighAngleCameraRig>();
             rig.Target = target;
+
+            var fade = cam.GetComponent<OccluderFadeSystem>();
+            if (fade == null) fade = cam.gameObject.AddComponent<OccluderFadeSystem>();
+            fade.Target = target;
         }
 
         private Pallet MakePallet(CustomerOrder order)
@@ -327,7 +337,7 @@ namespace StackUp
 
         private void BuildUi()
         {
-            EnsureEventSystem();
+            UiKit.EnsureEventSystem();
 
             var hud = new GameObject("HUD").AddComponent<HUD>();
             hud.Init(orders, game, player);
@@ -336,14 +346,6 @@ namespace StackUp
             result.Init();
             orders.AllOrdersDone += OnCampaignWin;
             orders.EndlessEnded += OnEndlessEnded;
-        }
-
-        private static void EnsureEventSystem()
-        {
-            if (EventSystem.current != null) return;
-            var go = new GameObject("EventSystem");
-            go.AddComponent<EventSystem>();
-            go.AddComponent<InputSystemUIInputModule>();
         }
 
         private void OnCampaignWin()

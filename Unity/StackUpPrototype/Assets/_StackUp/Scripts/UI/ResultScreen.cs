@@ -18,6 +18,7 @@ namespace StackUp
         private TextMeshProUGUI titleText;
         private TextMeshProUGUI detailText;
         private GameObject nextButton;
+        private GameObject retryButton;
 
         private bool visible;
         private bool canNext;
@@ -38,8 +39,7 @@ namespace StackUp
             canvas.sortingOrder = 10;
 
             var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1280, 720);
+            UiKit.ApplyScale(scaler);
             canvasGo.AddComponent<GraphicRaycaster>();
 
             panel = new GameObject("Panel");
@@ -54,7 +54,7 @@ namespace StackUp
             detailText = Text(panel.transform, "Detail", new Vector2(0, 40), 34, "");
 
             nextButton = MakeButton(panel.transform, "Next", new Vector2(0, -70), new Color(0.20f, 0.65f, 0.30f), "Next ▶", OnNext);
-            MakeButton(panel.transform, "Retry", new Vector2(0, -150), new Color(0.20f, 0.50f, 0.90f), "Retry", OnRetry);
+            retryButton = MakeButton(panel.transform, "Retry", new Vector2(0, -150), new Color(0.20f, 0.50f, 0.90f), "Retry", OnRetry);
             MakeButton(panel.transform, "Menu", new Vector2(0, -230), new Color(0.45f, 0.45f, 0.50f), "Main Menu", OnMenu);
         }
 
@@ -104,6 +104,7 @@ namespace StackUp
             if (nextButton != null) nextButton.SetActive(canNext);
             if (panel != null) panel.SetActive(true);
             visible = true;
+            UiKit.SelectFirst(canNext ? nextButton : retryButton);
         }
 
         public void Hide()

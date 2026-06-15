@@ -87,14 +87,17 @@ when creating GitHub issues.
 > Steamworks.NET implementation via `SteamServices.Init(...)` with no gameplay changes.
 
 ### M5 — Polish and Steam Deck Readiness
-- [ ] 43. Implement occluder fade system
-- [ ] 44. Add controller-first menu navigation
-- [ ] 45. Implement settings menu
-- [ ] 46. Add UI scale option
-- [ ] 47. Add core SFX
-- [ ] 48. Add feedback effects
-- [ ] 49. Perform Steam Deck readability pass
-- [ ] 50. Perform performance pass
+- [x] 43. Implement occluder fade system — `OccluderFadeSystem` + `FadeableObject`
+- [x] 44. Add controller-first menu navigation — `UiKit` (default input actions + select-first)
+- [x] 45. Implement settings menu — `SettingsMenu` (UI scale + volumes, persisted)
+- [x] 46. Add UI scale option — `SettingsData.UiScale` (100–160%) via `UiKit.ApplyScale`
+- [x] 47. Add core SFX — `AudioManager` (procedurally-synthesised tones; no audio assets yet)
+- [x] 48. Add feedback effects — `FeedbackSystem` (pooled popups) + `LevelFx`
+- [~] 49. Steam Deck readability pass — 1280×720 reference + UI scale; needs on-device check
+- [~] 50. Performance pass — popup pooling done; full profiling pass is in-editor work
+
+> Audio uses runtime-generated tones as placeholders (real SFX assets later).
+> Occluder fade is wired to racks; walls/scenery use the same `FadeableObject`.
 
 ### M6 — Release Preparation (Later)
 - [ ] 51. Integrate Steamworks

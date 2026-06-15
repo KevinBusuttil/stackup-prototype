@@ -11,15 +11,17 @@ namespace StackUp
     {
         private const string ProgressFile = "progress.json";
         private const string HighScoreFile = "highscores.json";
+        private const string SettingsFile = "settings.json";
 
         /// <summary>
         /// Files that live at the root of persistentDataPath. Steam Cloud (M6) can
         /// be configured to sync exactly these by name — no path changes needed.
         /// </summary>
-        public static readonly string[] CloudFiles = { ProgressFile, HighScoreFile };
+        public static readonly string[] CloudFiles = { ProgressFile, HighScoreFile, SettingsFile };
 
         public static ProgressData Progress { get; private set; } = new ProgressData();
         public static HighScoreData HighScores { get; private set; } = new HighScoreData();
+        public static SettingsData Settings { get; private set; } = new SettingsData();
 
         private static bool loaded;
 
@@ -27,7 +29,14 @@ namespace StackUp
         {
             Progress = Read<ProgressData>(ProgressFile) ?? new ProgressData();
             HighScores = Read<HighScoreData>(HighScoreFile) ?? new HighScoreData();
+            Settings = Read<SettingsData>(SettingsFile) ?? new SettingsData();
             loaded = true;
+        }
+
+        public static void SaveSettings()
+        {
+            EnsureLoaded();
+            Write(SettingsFile, Settings);
         }
 
         private static void EnsureLoaded()

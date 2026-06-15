@@ -16,12 +16,15 @@ namespace StackUp
     {
         private GameObject mainPanel;
         private GameObject selectPanel;
+        private GameObject firstButton;
+        private SettingsMenu settings;
 
         private void Start()
         {
             EnsureGameManager();
-            EnsureEventSystem();
+            UiKit.EnsureEventSystem();
             EnsureCamera();
+            AudioManager.Ensure();
             BuildUi();
             ShowMain();
         }
@@ -30,14 +33,6 @@ namespace StackUp
         {
             if (GameManager.Instance == null)
                 new GameObject("GameManager").AddComponent<GameManager>().AdvanceToMenuOnStart = false;
-        }
-
-        private static void EnsureEventSystem()
-        {
-            if (EventSystem.current != null) return;
-            var go = new GameObject("EventSystem");
-            go.AddComponent<EventSystem>();
-            go.AddComponent<InputSystemUIInputModule>();
         }
 
         private static void EnsureCamera()
@@ -56,16 +51,20 @@ namespace StackUp
             var canvas = canvasGo.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1280, 720);
+            UiKit.ApplyScale(scaler);
             canvasGo.AddComponent<GraphicRaycaster>();
+
+            settings = new GameObject("SettingsMenu").AddComponent<SettingsMenu>();
+            settings.transform.SetParent(transform, false);
+            settings.Init();
 
             mainPanel = Panel(canvas.transform, "MainPanel");
             Text(mainPanel.transform, "Title", new Vector2(0, 220), 72, "STACK UP!");
             Text(mainPanel.transform, "Sub", new Vector2(0, 150), 28, "Warehouse Operations");
-            MakeButton(mainPanel.transform, "Campaign", new Vector2(0, 20), new Color(0.20f, 0.55f, 0.90f), "Campaign", ShowSelect);
-            MakeButton(mainPanel.transform, "Endless", new Vector2(0, -60), new Color(0.20f, 0.65f, 0.30f), "Endless", () => GameManager.Instance.StartEndless());
-            MakeButton(mainPanel.transform, "Quit", new Vector2(0, -140), new Color(0.5f, 0.4f, 0.4f), "Quit", Quit);
+            firstButton = MakeButton(mainPanel.transform, "Campaign", new Vector2(0, 40), new Color(0.20f, 0.55f, 0.90f), "Campaign", ShowSelect);
+            MakeButton(mainPanel.transform, "Endless", new Vector2(0, -40), new Color(0.20f, 0.65f, 0.30f), "Endless", () => GameManager.Instance.StartEndless());
+            MakeButton(mainPanel.transform, "Settings", new Vector2(0, -120), new Color(0.45f, 0.45f, 0.55f), "Settings", OpenSettings);
+            MakeButton(mainPanel.transform, "Quit", new Vector2(0, -200), new Color(0.5f, 0.4f, 0.4f), "Quit", Quit);
 
             selectPanel = Panel(canvas.transform, "SelectPanel");
             Text(selectPanel.transform, "SelTitle", new Vector2(0, 280), 48, "Select Level");
@@ -98,8 +97,14 @@ namespace StackUp
             }
         }
 
-        private void ShowMain() { mainPanel.SetActive(true); selectPanel.SetActive(false); }
+        private void ShowMain() { mainPanel.SetActive(true); selectPanel.SetActive(false); UiKit.SelectFirst(firstButton); }
         private void ShowSelect() { mainPanel.SetActive(false); selectPanel.SetActive(true); }
+
+        private void OpenSettings()
+        {
+            mainPanel.SetActive(false);
+            settings.Open(ShowMain);
+        }
 
         private static void Quit()
         {

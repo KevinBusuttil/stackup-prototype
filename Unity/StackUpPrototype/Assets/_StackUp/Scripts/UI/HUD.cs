@@ -47,9 +47,7 @@ namespace StackUp
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
             var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1280, 720);
-            scaler.matchWidthOrHeight = 0.5f;
+            UiKit.ApplyScale(scaler);
             canvasGo.AddComponent<GraphicRaycaster>();
 
             ordersText = MakeText(canvas.transform, "Orders", new Vector2(24, -24), TextAlignmentOptions.TopLeft, 24, new Vector2(0, 1), new Vector2(620, 300));
