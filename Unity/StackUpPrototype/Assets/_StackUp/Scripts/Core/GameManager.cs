@@ -60,6 +60,12 @@ namespace StackUp
             Instance = this;
             DontDestroyOnLoad(gameObject);
             SaveService.Load();
+            SteamServices.Init();
+        }
+
+        private void Update()
+        {
+            SteamServices.Current?.RunCallbacks();
         }
 
         private void Start()

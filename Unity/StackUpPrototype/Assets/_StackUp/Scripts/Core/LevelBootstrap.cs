@@ -39,6 +39,8 @@ namespace StackUp
         private readonly List<string> docks = new List<string>();
         private int palletsCreated;
         private System.Random rng = new System.Random();
+        private SteamTelemetry telemetry;
+        private float startTime;
 
         private void Start()
         {
@@ -60,6 +62,10 @@ namespace StackUp
 
             orders = new GameObject("OrderManager").AddComponent<OrderManager>();
             orders.Init(player.Tote, score, catalog, cfg, MakePallet, GenerateOrder);
+
+            telemetry = new GameObject("SteamTelemetry").AddComponent<SteamTelemetry>();
+            telemetry.Init(orders, score, game, player.Tote, cfg, campaignIndex);
+            startTime = Time.time;
 
             WireInteractables();
             BuildUi();
@@ -346,6 +352,8 @@ namespace StackUp
             if (campaignFromMenu)
                 SaveService.CompleteCampaignLevel(campaignIndex, game.Score, LevelLibrary.CampaignCount);
 
+            if (campaignFromMenu) telemetry?.ReportCampaignWin(Time.time - startTime);
+
             game.CompleteLevel(game.Score);
 
             int next = campaignIndex + 1;
@@ -356,6 +364,7 @@ namespace StackUp
         private void OnEndlessEnded()
         {
             SaveService.RecordEndless(game.Score, orders.Wave);
+            telemetry?.ReportEndlessEnd();
             game.CompleteLevel(game.Score);
             result.Show("Run Over",
                 $"Score: {game.Score}\nReached wave {orders.Wave}\nBest: {SaveService.HighScores.EndlessHighScore} (wave {SaveService.HighScores.EndlessHighestWave})",

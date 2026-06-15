@@ -19,6 +19,7 @@ namespace StackUp
         public int OrderCount = 1;        // campaign: total orders to clear
         public int DockCount = 1;
         public float SlaSeconds = 0f;     // 0 = no SLA timer
+        public float TargetTimeSeconds = 0f; // beat this for Speed Runner (0 = none)
 
         // Which SKUs (by id) are available, and how big orders can get.
         public string[] SkuPool = { "BOX-A" };

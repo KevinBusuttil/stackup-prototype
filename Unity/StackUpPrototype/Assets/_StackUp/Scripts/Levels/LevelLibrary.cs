@@ -17,7 +17,7 @@ namespace StackUp
             {
                 Name = "First Pick", Blurb = "One SKU, one order. Pick and load.",
                 UseStacking = false, UseVerification = false,
-                MaxConcurrent = 1, OrderCount = 1, DockCount = 1, SlaSeconds = 0f,
+                MaxConcurrent = 1, OrderCount = 1, DockCount = 1, SlaSeconds = 0f, TargetTimeSeconds = 45f,
                 SkuPool = new[] { BoxA }, MaxLinesPerOrder = 1, MaxQtyPerLine = 1
             },
             new LevelConfig
@@ -38,7 +38,7 @@ namespace StackUp
             {
                 Name = "Verification", Blurb = "Verify before you load.",
                 UseStacking = true, UseVerification = true,
-                MaxConcurrent = 1, OrderCount = 2, DockCount = 1, SlaSeconds = 0f,
+                MaxConcurrent = 1, OrderCount = 2, DockCount = 1, SlaSeconds = 0f, TargetTimeSeconds = 150f,
                 SkuPool = new[] { BoxA, GlassB, SteelC }, MaxLinesPerOrder = 2, MaxQtyPerLine = 2,
                 IncludeDecoy = true
             },

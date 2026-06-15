@@ -75,12 +75,16 @@ when creating GitHub issues.
 > #34/#35 are art tasks deferred until the Blender pipeline lands.
 
 ### M4 — Steam Architecture
-- [ ] 37. Create SteamService abstraction
-- [ ] 38. Create MockSteamService
-- [ ] 39. Add achievement event hooks
-- [ ] 40. Add stat event hooks
-- [ ] 41. Add leaderboard interface
-- [ ] 42. Make save system Steam Cloud-compatible
+- [x] 37. Create SteamService abstraction — `ISteamService` + `SteamServices` locator
+- [x] 38. Create MockSteamService — in-memory, logs; default so the game runs without Steam
+- [x] 39. Add achievement event hooks — `SteamTelemetry` (all 12 achievement ids)
+- [x] 40. Add stat event hooks — `SteamTelemetry` (orders/picks/perfect/wrong/rework/combo/time/wave)
+- [x] 41. Add leaderboard interface — `ISteamService.SubmitLeaderboardScore` (endless score/wave, level times)
+- [x] 42. Make save system Steam Cloud-compatible — `SaveService.CloudFiles` at persistentDataPath root
+
+> Gameplay never references Steam: systems raise plain C# events and `SteamTelemetry`
+> is the only translator to `ISteamService`. M6 swaps `MockSteamService` for a real
+> Steamworks.NET implementation via `SteamServices.Init(...)` with no gameplay changes.
 
 ### M5 — Polish and Steam Deck Readiness
 - [ ] 43. Implement occluder fade system

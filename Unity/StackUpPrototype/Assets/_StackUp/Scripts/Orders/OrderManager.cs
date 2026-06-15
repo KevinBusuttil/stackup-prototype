@@ -40,6 +40,7 @@ namespace StackUp
         public IReadOnlyList<CustomerOrder> ActiveOrders => active;
         public int CompletedCount { get; private set; }
         public int FailedCount { get; private set; }
+        public int ReworkJobsCreated { get; private set; }
         public int Wave => CompletedCount / OrdersPerWave + 1;
 
         public CustomerOrder SelectedOrder =>
@@ -299,6 +300,7 @@ namespace StackUp
                     return;
 
             jobCounter++;
+            ReworkJobsCreated++;
             jobs.Add(new Job
             {
                 JobId = $"RWK-{jobCounter:000}",

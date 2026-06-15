@@ -12,6 +12,12 @@ namespace StackUp
         private const string ProgressFile = "progress.json";
         private const string HighScoreFile = "highscores.json";
 
+        /// <summary>
+        /// Files that live at the root of persistentDataPath. Steam Cloud (M6) can
+        /// be configured to sync exactly these by name — no path changes needed.
+        /// </summary>
+        public static readonly string[] CloudFiles = { ProgressFile, HighScoreFile };
+
         public static ProgressData Progress { get; private set; } = new ProgressData();
         public static HighScoreData HighScores { get; private set; } = new HighScoreData();
 
@@ -40,6 +46,20 @@ namespace StackUp
             EnsureLoaded();
             foreach (var r in Progress.Levels) if (r.Index == levelIndex) return r.BestScore;
             return 0;
+        }
+
+        public static bool IsCompleted(int levelIndex)
+        {
+            EnsureLoaded();
+            foreach (var r in Progress.Levels) if (r.Index == levelIndex) return r.Completed;
+            return false;
+        }
+
+        public static bool AllCampaignComplete(int totalLevels)
+        {
+            if (totalLevels <= 0) return false;
+            for (int i = 0; i < totalLevels; i++) if (!IsCompleted(i)) return false;
+            return true;
         }
 
         /// <summary>Records a campaign completion, unlocks the next level, and saves.</summary>
