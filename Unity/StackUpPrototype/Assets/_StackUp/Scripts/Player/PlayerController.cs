@@ -15,6 +15,9 @@ namespace StackUp
 
         public Transform HeadMarker { get; set; }
 
+        /// <summary>Set by the level so the player can cycle the active order (Q / Tab / gamepad North).</summary>
+        public OrderManager Orders { get; set; }
+
         private Rigidbody rb;
         private Vector3 moveInput;
         private Tote tote;
@@ -42,6 +45,8 @@ namespace StackUp
                 var target = Interactor.Current;
                 if (target != null && target.CanInteract(this)) target.Interact(this);
             }
+
+            if (CyclePressed()) Orders?.CycleSelection();
         }
 
         private void FixedUpdate()
@@ -82,6 +87,15 @@ namespace StackUp
             if (kb != null && kb.eKey.wasPressedThisFrame) return true;
             var pad = Gamepad.current;
             if (pad != null && pad.buttonSouth.wasPressedThisFrame) return true;
+            return false;
+        }
+
+        private static bool CyclePressed()
+        {
+            var kb = Keyboard.current;
+            if (kb != null && (kb.qKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame)) return true;
+            var pad = Gamepad.current;
+            if (pad != null && pad.buttonNorth.wasPressedThisFrame) return true;
             return false;
         }
     }

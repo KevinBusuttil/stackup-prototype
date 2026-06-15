@@ -45,15 +45,19 @@ when creating GitHub issues.
 - [x] 19. Implement level result screen — `ResultScreen`
 
 ### M2 — Core Gameplay Loop
-- [ ] 20. Implement pallet grid system
-- [ ] 21. Implement placement preview
-- [ ] 22. Implement stacking validation rules
-- [ ] 23. Implement verification station
-- [ ] 24. Implement rework jobs
-- [ ] 25. Implement scoring system
-- [ ] 26. Implement order queue
-- [ ] 27. Implement multiple active orders
-- [ ] 28. Implement wrong pick / wrong dock penalties
+- [x] 20. Implement pallet grid system — `PalletGrid` (3×3×4)
+- [x] 21. Implement placement preview — `Pallet` ghost (green valid / red invalid)
+- [x] 22. Implement stacking validation rules — height limit + heavy-on-fragile
+- [x] 23. Implement verification station — `VerificationStation` + `VerificationResult`
+- [x] 24. Implement rework jobs — `OrderManager` rework `Job`s on failed verify
+- [x] 25. Implement scoring system — `ScoreSystem` (bonuses, combo, penalties)
+- [x] 26. Implement order queue — `OrderManager` pending queue
+- [x] 27. Implement multiple active orders — concurrent + cycle (Q/Tab/Y)
+- [x] 28. Implement wrong pick / wrong dock penalties — `ScoreSystem` penalties
+      wired in `RackSlot` / `DockLane`
+
+> M2 demonstrator scene: `Warehouse_Level_02.unity` (stacking + verification +
+> 2 concurrent orders). `Warehouse_Level_01.unity` remains the simple M1 slice.
 
 ### M3 — Content and Progression
 - [ ] 29. Implement campaign level select

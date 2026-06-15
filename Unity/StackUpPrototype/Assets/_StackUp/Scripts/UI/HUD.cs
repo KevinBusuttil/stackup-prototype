@@ -6,9 +6,9 @@ using UnityEngine.UI;
 namespace StackUp
 {
     /// <summary>
-    /// Minimal in-game HUD, built entirely from code so the slice needs no
-    /// authored Canvas. Shows the active job, tote contents, score, and the
-    /// current interaction prompt. See CLAUDE_CODE_SPEC.md Section 18.2.
+    /// In-game HUD, built from code. Lists active orders (highlighting the
+    /// selected one), tote contents, score / combo / rework, the interaction
+    /// prompt, and transient verification feedback. See Section 18.2.
     /// </summary>
     public class HUD : MonoBehaviour
     {
@@ -16,11 +16,14 @@ namespace StackUp
         private GameManager game;
         private PlayerController player;
 
-        private TextMeshProUGUI jobText;
+        private TextMeshProUGUI ordersText;
         private TextMeshProUGUI toteText;
         private TextMeshProUGUI scoreText;
         private TextMeshProUGUI promptText;
+        private TextMeshProUGUI verifyText;
+
         private readonly StringBuilder sb = new StringBuilder();
+        private float verifyTimer;
 
         public void Init(OrderManager orders, GameManager game, PlayerController player)
         {
@@ -28,6 +31,12 @@ namespace StackUp
             this.game = game;
             this.player = player;
             BuildUi();
+            if (orders != null) orders.VerificationReported += OnVerification;
+        }
+
+        private void OnDestroy()
+        {
+            if (orders != null) orders.VerificationReported -= OnVerification;
         }
 
         private void BuildUi()
@@ -43,14 +52,16 @@ namespace StackUp
             scaler.matchWidthOrHeight = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
 
-            jobText = MakeText(canvas.transform, "Job", new Vector2(24, -24), TextAlignmentOptions.TopLeft, 28, new Vector2(0, 1));
-            toteText = MakeText(canvas.transform, "Tote", new Vector2(24, -84), TextAlignmentOptions.TopLeft, 22, new Vector2(0, 1));
-            scoreText = MakeText(canvas.transform, "Score", new Vector2(-24, -24), TextAlignmentOptions.TopRight, 28, new Vector2(1, 1));
-            promptText = MakeText(canvas.transform, "Prompt", new Vector2(0, 64), TextAlignmentOptions.Bottom, 30, new Vector2(0.5f, 0));
+            ordersText = MakeText(canvas.transform, "Orders", new Vector2(24, -24), TextAlignmentOptions.TopLeft, 24, new Vector2(0, 1), new Vector2(620, 300));
+            toteText = MakeText(canvas.transform, "Tote", new Vector2(24, 24), TextAlignmentOptions.BottomLeft, 22, new Vector2(0, 0), new Vector2(620, 120));
+            scoreText = MakeText(canvas.transform, "Score", new Vector2(-24, -24), TextAlignmentOptions.TopRight, 26, new Vector2(1, 1), new Vector2(420, 140));
+            promptText = MakeText(canvas.transform, "Prompt", new Vector2(0, 70), TextAlignmentOptions.Bottom, 30, new Vector2(0.5f, 0), new Vector2(900, 50));
+            verifyText = MakeText(canvas.transform, "Verify", new Vector2(0, 150), TextAlignmentOptions.Center, 30, new Vector2(0.5f, 0.5f), new Vector2(900, 300));
+            verifyText.text = "";
         }
 
         private static TextMeshProUGUI MakeText(Transform parent, string name, Vector2 anchoredPos,
-            TextAlignmentOptions align, float size, Vector2 anchor)
+            TextAlignmentOptions align, float size, Vector2 anchor, Vector2 sizeDelta)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -63,39 +74,69 @@ namespace StackUp
             rt.anchorMin = anchor;
             rt.anchorMax = anchor;
             rt.pivot = anchor;
-            rt.sizeDelta = new Vector2(640, 60);
+            rt.sizeDelta = sizeDelta;
             rt.anchoredPosition = anchoredPos;
             return t;
+        }
+
+        private void OnVerification(VerificationResult r)
+        {
+            sb.Clear();
+            sb.Append(r.Passed ? "<color=#5fd35f>VERIFIED</color>\n" : "<color=#e05555>VERIFICATION FAILED</color>\n");
+            foreach (var l in r.Lines)
+                sb.Append($"{l.SkuId}: {l.Collected}/{l.Required}{(l.Missing > 0 ? $"  (missing {l.Missing})" : "")}\n");
+            if (r.WrongItems > 0) sb.Append($"Wrong items: {r.WrongItems}\n");
+            if (!r.Passed) sb.Append("Rework: pick the missing items, stack, verify again.");
+            verifyText.text = sb.ToString();
+            verifyTimer = 3.5f;
         }
 
         private void Update()
         {
             if (orders == null) return;
-            var order = orders.ActiveOrder;
 
             sb.Clear();
-            if (order == null) sb.Append("No active order");
-            else if (orders.IsReadyToLoad()) sb.Append($"Order {order.OrderId}:  LOAD at {order.DockLaneId}");
+            var list = orders.ActiveOrders;
+            if (list.Count == 0) sb.Append("No active orders");
             else
             {
-                sb.Append($"Order {order.OrderId} — Pick:  ");
-                bool first = true;
-                foreach (var line in order.Lines)
+                sb.Append(list.Count > 1 ? "Orders (Q / Tab to cycle):\n" : "Order:\n");
+                for (int i = 0; i < list.Count; i++)
                 {
-                    if (!first) sb.Append(",  ");
-                    sb.Append($"{line.SkuId} {orders.CollectedQuantity(line.SkuId)}/{line.Quantity}");
-                    first = false;
+                    var o = list[i];
+                    bool sel = i == orders.SelectedIndex;
+                    sb.Append(sel ? "> " : "   ");
+                    sb.Append($"{o.OrderId} [{o.DockLaneId}] ");
+                    if (orders.IsReadyToLoad(o)) sb.Append("READY → LOAD");
+                    else if (o.State == OrderState.VerificationFailed) sb.Append("REWORK");
+                    else sb.Append(o.State.ToString());
+                    sb.Append('\n');
+                    foreach (var line in o.Lines)
+                        sb.Append($"      {line.SkuId} {orders.Collected(o, line.SkuId)}/{line.Quantity}\n");
                 }
             }
-            jobText.text = sb.ToString();
+            ordersText.text = sb.ToString();
 
             if (player != null && player.Tote != null)
-                toteText.text = $"Tote: {player.Tote.Inventory.UnitCount}/{player.Tote.Inventory.MaxUnits}";
+            {
+                sb.Clear();
+                sb.Append($"Tote {player.Tote.Inventory.UnitCount}/{player.Tote.Inventory.MaxUnits}");
+                foreach (var kv in player.Tote.Inventory.Contents) sb.Append($"   {kv.Key}:{kv.Value}");
+                toteText.text = sb.ToString();
+            }
 
-            if (game != null) scoreText.text = $"Score: {game.Score}";
+            int combo = orders.Score != null ? orders.Score.Combo : 0;
+            int score = game != null ? game.Score : 0;
+            scoreText.text = $"Score: {score}\nCombo: x{combo}\nRework: {orders.ActiveReworkJobs}";
 
             var current = player != null && player.Interactor != null ? player.Interactor.Current : null;
             promptText.text = current != null ? $"[E] {current.GetPrompt()}" : "";
+
+            if (verifyTimer > 0f)
+            {
+                verifyTimer -= Time.deltaTime;
+                if (verifyTimer <= 0f) verifyText.text = "";
+            }
         }
     }
 }
