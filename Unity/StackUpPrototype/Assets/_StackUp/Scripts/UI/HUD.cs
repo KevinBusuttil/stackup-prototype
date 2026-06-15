@@ -110,6 +110,8 @@ namespace StackUp
                     if (orders.IsReadyToLoad(o)) sb.Append("READY → LOAD");
                     else if (o.State == OrderState.VerificationFailed) sb.Append("REWORK");
                     else sb.Append(o.State.ToString());
+                    float sla = orders.GetSlaRemaining(o);
+                    if (sla >= 0f) sb.Append($"  ⏱ {Mathf.CeilToInt(sla)}s");
                     sb.Append('\n');
                     foreach (var line in o.Lines)
                         sb.Append($"      {line.SkuId} {orders.Collected(o, line.SkuId)}/{line.Quantity}\n");
@@ -127,7 +129,8 @@ namespace StackUp
 
             int combo = orders.Score != null ? orders.Score.Combo : 0;
             int score = game != null ? game.Score : 0;
-            scoreText.text = $"Score: {score}\nCombo: x{combo}\nRework: {orders.ActiveReworkJobs}";
+            string waveLine = orders.Endless ? $"\nWave: {orders.Wave}" : "";
+            scoreText.text = $"Score: {score}\nCombo: x{combo}\nRework: {orders.ActiveReworkJobs}{waveLine}";
 
             var current = player != null && player.Interactor != null ? player.Interactor.Current : null;
             promptText.text = current != null ? $"[E] {current.GetPrompt()}" : "";

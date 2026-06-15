@@ -19,6 +19,7 @@ namespace StackUp
         public int WrongDockPenalty = 25;
         public int FailedVerificationPenalty = 20;
         public int IllegalStackPenalty = 10;
+        public int MissedSlaPenalty = 40;
 
         public int Combo { get; private set; }
         public int BestCombo { get; private set; }
@@ -56,5 +57,6 @@ namespace StackUp
         public void WrongDock() { Combo = 0; Apply(-WrongDockPenalty); }
         public void FailedVerification() { Combo = 0; Apply(-FailedVerificationPenalty); }
         public void IllegalStack() => Apply(-IllegalStackPenalty);
+        public void MissedSla() { Combo = 0; Apply(-MissedSlaPenalty); }
     }
 }
