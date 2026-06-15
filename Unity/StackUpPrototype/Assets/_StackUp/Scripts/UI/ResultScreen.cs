@@ -1,18 +1,21 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace StackUp
 {
     /// <summary>
-    /// Level result overlay, built from code. Shown when the order completes;
-    /// "Play Again" reloads the level. See CLAUDE_CODE_SPEC.md Sections 13.1 / 18.1.
+    /// Level result overlay, built from code. Shown when the level finishes;
+    /// "Play Again" (button, or Enter / Space / gamepad South) reloads the level.
+    /// See CLAUDE_CODE_SPEC.md Sections 13.1 / 18.1.
     /// </summary>
     public class ResultScreen : MonoBehaviour
     {
         private GameObject panel;
         private TextMeshProUGUI detail;
+        private bool visible;
 
         public void Init()
         {
@@ -55,7 +58,7 @@ namespace StackUp
             brt.anchoredPosition = new Vector2(0, -110);
 
             var btn = btnGo.AddComponent<Button>();
-            btn.onClick.AddListener(() => SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex));
+            btn.onClick.AddListener(Restart);
 
             var label = MakeText(btnGo.transform, "Label", Vector2.zero, 30, "Play Again");
             label.rectTransform.anchorMin = Vector2.zero;
@@ -86,11 +89,27 @@ namespace StackUp
         {
             if (detail != null) detail.text = message;
             if (panel != null) panel.SetActive(true);
+            visible = true;
         }
 
         public void Hide()
         {
             if (panel != null) panel.SetActive(false);
+            visible = false;
         }
+
+        private void Update()
+        {
+            if (!visible) return;
+            var kb = Keyboard.current;
+            var pad = Gamepad.current;
+            if ((kb != null && (kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame))
+                || (pad != null && pad.buttonSouth.wasPressedThisFrame))
+            {
+                Restart();
+            }
+        }
+
+        private static void Restart() => SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 }

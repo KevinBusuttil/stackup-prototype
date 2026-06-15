@@ -1,0 +1,60 @@
+using System;
+using UnityEngine;
+
+namespace StackUp
+{
+    /// <summary>
+    /// Scoring + combo + penalties (Sections 17 / 28). Owns the combo state and
+    /// applies score deltas through the GameManager so total score has one home.
+    /// </summary>
+    public class ScoreSystem : MonoBehaviour
+    {
+        [Header("Rewards")]
+        public int BasePerOrder = 100;
+        public int PerfectBonus = 50;
+        public int ComboStep = 25;
+
+        [Header("Penalties")]
+        public int WrongPickPenalty = 15;
+        public int WrongDockPenalty = 25;
+        public int FailedVerificationPenalty = 20;
+        public int IllegalStackPenalty = 10;
+
+        public int Combo { get; private set; }
+        public int BestCombo { get; private set; }
+
+        public event Action Changed;
+
+        private GameManager game;
+
+        public void Init(GameManager game) => this.game = game;
+
+        private void Apply(int delta)
+        {
+            game?.AddScore(delta);
+            Changed?.Invoke();
+        }
+
+        public void CompleteOrder(bool perfect, float timeBonus)
+        {
+            int comboBonus = Combo * ComboStep;
+            int total = BasePerOrder + comboBonus + Mathf.RoundToInt(Mathf.Max(0f, timeBonus)) + (perfect ? PerfectBonus : 0);
+            Apply(total);
+
+            if (perfect)
+            {
+                Combo++;
+                if (Combo > BestCombo) BestCombo = Combo;
+            }
+            else
+            {
+                Combo = 0;
+            }
+        }
+
+        public void WrongPick() { Combo = 0; Apply(-WrongPickPenalty); }
+        public void WrongDock() { Combo = 0; Apply(-WrongDockPenalty); }
+        public void FailedVerification() { Combo = 0; Apply(-FailedVerificationPenalty); }
+        public void IllegalStack() => Apply(-IllegalStackPenalty);
+    }
+}

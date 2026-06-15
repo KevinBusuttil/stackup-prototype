@@ -1,51 +1,72 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 
 namespace StackUp
 {
     /// <summary>
-    /// Programmatically constructs the M1 vertical-slice warehouse — floor, one
-    /// rack with stocked slots, a dock lane, the player robot, a high-angle
-    /// camera and the HUD — then starts the order loop. This lets the whole
-    /// Pick -> Load slice run from an otherwise empty scene. Real prefabs/art
-    /// replace these primitives in M3.
+    /// Programmatically constructs a warehouse level and starts the order loop,
+    /// so the slice runs from an otherwise empty scene. Two modes:
+    ///   - simple (M1): pick into the tote and load at the dock.
+    ///   - full (M2): pick -> stack onto a per-order pallet -> verify -> load,
+    ///     with multiple concurrent orders, scoring, and penalties.
+    /// Real prefabs/art replace these primitives in M3.
     /// </summary>
     public class LevelBootstrap : MonoBehaviour
     {
-        [Header("Order (M1: one SKU / one order)")]
-        public string SkuId = "BOX-A";
-        public int OrderQuantity = 1;
-        public string DockLaneId = "DOCK-1";
+        [Header("Level configuration")]
+        public bool UseStacking = false;
+        public bool UseVerification = false;
+        public int MaxConcurrent = 1;
 
-        [Header("Scoring")]
-        public int PointsPerOrder = 100;
+        private const string BoxA = "BOX-A";
+        private const string GlassB = "GLASS-B";
+        private const string SteelC = "STEEL-C";
+        private const string Junk = "JUNK-X";
 
-        private Material floorMat, rackMat, slotMat, playerMat, dockMat;
+        private Material floorMat, rackMat, playerMat, dockMat, verifyMat;
+        private Shader lit;
 
         private GameManager game;
         private OrderManager orders;
         private WarehouseGrid grid;
+        private SkuCatalog catalog;
         private PlayerController player;
-        private HUD hud;
         private ResultScreen result;
+        private int palletsCreated;
 
         private void Start()
         {
             game = EnsureGameManager();
             CreateMaterials();
             BuildEnvironment();
-            BuildCatalog();
-            BuildRack();
+            catalog = BuildCatalog();
+            BuildRacks();
             grid = BuildGrid();
-            BuildDock();
+            BuildDocks();
+            if (UseVerification) BuildVerificationStation();
             player = BuildPlayer();
             BuildCamera(player.transform);
-            orders = BuildOrders(player);
+
+            var score = new GameObject("ScoreSystem").AddComponent<ScoreSystem>();
+            score.Init(game);
+
+            orders = new GameObject("OrderManager").AddComponent<OrderManager>();
+            orders.Init(player.Tote, score, catalog, UseStacking, UseVerification, MaxConcurrent, MakePallet);
+
             WireInteractables();
             BuildUi();
-            StartLevel();
+            player.Orders = orders;
+
+            EnqueueOrders();
+            game.SetMode(GameMode.Campaign);
+            game.ResetScore();
+            game.SetState(GameState.Running);
+            orders.Begin();
         }
 
+        // ------------------------------------------------------------- helpers
         private GameManager EnsureGameManager()
         {
             var gm = GameManager.Instance;
@@ -59,22 +80,22 @@ namespace StackUp
 
         private void CreateMaterials()
         {
-            Shader lit = Shader.Find("Universal Render Pipeline/Lit");
+            lit = Shader.Find("Universal Render Pipeline/Lit");
             if (lit == null) lit = Shader.Find("Standard");
-            floorMat = Mat(lit, new Color(0.55f, 0.55f, 0.58f));
-            rackMat = Mat(lit, new Color(0.30f, 0.33f, 0.40f));
-            slotMat = Mat(lit, new Color(0.85f, 0.70f, 0.20f));
-            playerMat = Mat(lit, new Color(0.20f, 0.70f, 0.90f));
-            dockMat = Mat(lit, new Color(0.20f, 0.75f, 0.35f));
+            floorMat = Mat(new Color(0.55f, 0.55f, 0.58f));
+            rackMat = Mat(new Color(0.30f, 0.33f, 0.40f));
+            playerMat = Mat(new Color(0.20f, 0.70f, 0.90f));
+            dockMat = Mat(new Color(0.20f, 0.75f, 0.35f));
+            verifyMat = Mat(new Color(0.85f, 0.65f, 0.20f));
         }
 
-        private static Material Mat(Shader shader, Color c) => new Material(shader) { color = c };
+        private Material Mat(Color c) => new Material(lit) { color = c };
 
         private void BuildEnvironment()
         {
             var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
             floor.name = "Floor";
-            floor.transform.localScale = new Vector3(4f, 1f, 4f); // 40 x 40
+            floor.transform.localScale = new Vector3(4f, 1f, 4f);
             SetMat(floor, floorMat);
 
             var light = new GameObject("Directional Light").AddComponent<Light>();
@@ -84,49 +105,59 @@ namespace StackUp
             light.shadows = LightShadows.Soft;
         }
 
-        private void BuildCatalog()
+        private SkuCatalog BuildCatalog()
         {
-            var catalog = new GameObject("SkuCatalog").AddComponent<SkuCatalog>();
-            var sku = ScriptableObject.CreateInstance<SkuDefinition>();
-            sku.SkuId = SkuId;
-            sku.DisplayName = "Standard Box";
-            sku.PackagingType = PackagingType.Box;
-            sku.WeightClass = WeightClass.Medium;
-            sku.StackClass = StackClass.Standard;
-            sku.DisplayColor = new Color(0.90f, 0.55f, 0.20f);
-            catalog.Register(sku);
+            var cat = new GameObject("SkuCatalog").AddComponent<SkuCatalog>();
+            MakeSku(cat, BoxA, "Standard Box", PackagingType.Box, WeightClass.Medium, StackClass.Standard, new Color(0.90f, 0.55f, 0.20f));
+            if (UseStacking)
+            {
+                MakeSku(cat, GlassB, "Glass Case", PackagingType.BottleCase, WeightClass.Light, StackClass.Fragile, new Color(0.40f, 0.80f, 0.95f));
+                MakeSku(cat, SteelC, "Steel Bar", PackagingType.Case, WeightClass.Heavy, StackClass.Standard, new Color(0.70f, 0.70f, 0.75f));
+                MakeSku(cat, Junk, "Mis-stocked Item", PackagingType.Bag, WeightClass.Light, StackClass.Standard, new Color(0.80f, 0.30f, 0.65f));
+            }
+            return cat;
         }
 
-        private void BuildRack()
+        private static void MakeSku(SkuCatalog cat, string id, string name, PackagingType pk, WeightClass w, StackClass s, Color col)
         {
-            var rack = new GameObject("RackBay_A");
-            rack.transform.position = new Vector3(-6f, 0f, 6f);
+            var sku = ScriptableObject.CreateInstance<SkuDefinition>();
+            sku.SkuId = id;
+            sku.DisplayName = name;
+            sku.PackagingType = pk;
+            sku.WeightClass = w;
+            sku.StackClass = s;
+            sku.DisplayColor = col;
+            cat.Register(sku);
+        }
 
-            var frame = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            frame.name = "Mesh";
-            frame.transform.SetParent(rack.transform, false);
-            frame.transform.localScale = new Vector3(4f, 2f, 1f);
-            frame.transform.localPosition = new Vector3(0f, 1f, 0f);
-            SetMat(frame, rackMat);
-
-            // Three slots along the rack face; stock the target SKU in the middle.
-            for (int i = 0; i < 3; i++)
+        private void BuildRacks()
+        {
+            if (!UseStacking)
             {
-                var slotGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                slotGo.name = $"Slot_A01_L01_C{i + 1:00}";
-                slotGo.transform.SetParent(rack.transform, false);
-                slotGo.transform.localScale = new Vector3(0.9f, 0.9f, 0.9f);
-                slotGo.transform.localPosition = new Vector3(-1.3f + i * 1.3f, 1.4f, -0.7f);
-                SetMat(slotGo, slotMat);
-
-                var marker = slotGo.AddComponent<SlotMarker>();
-                marker.SlotId = slotGo.name;
-                marker.ZoneId = "ZONE-A";
-                if (i == 1)
-                    marker.InitialStock.Add(new SlotMarker.StockEntry { SkuId = SkuId, Quantity = 10 });
-
-                slotGo.AddComponent<RackSlot>();
+                MakeRackSlot("Slot_A01", new Vector3(-6f, 1f, 7f), BoxA, 10);
+                return;
             }
+            MakeRackSlot("Slot_A01", new Vector3(-8f, 1f, 7f), BoxA, 12);
+            MakeRackSlot("Slot_A02", new Vector3(-5f, 1f, 7f), GlassB, 12);
+            MakeRackSlot("Slot_A03", new Vector3(-2f, 1f, 7f), SteelC, 12);
+            MakeRackSlot("Slot_A04", new Vector3(1f, 1f, 7f), Junk, 12); // decoy: not in any order
+        }
+
+        private void MakeRackSlot(string slotId, Vector3 pos, string sku, int qty)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = $"RackSlot_{sku}";
+            go.transform.position = pos;
+            go.transform.localScale = new Vector3(1.2f, 1.2f, 1.2f);
+
+            var def = catalog != null ? catalog.Get(sku) : null;
+            SetMat(go, def != null ? Mat(def.DisplayColor) : rackMat);
+
+            var marker = go.AddComponent<SlotMarker>();
+            marker.SlotId = slotId;
+            marker.ZoneId = "ZONE-A";
+            marker.InitialStock.Add(new SlotMarker.StockEntry { SkuId = sku, Quantity = qty });
+            go.AddComponent<RackSlot>();
         }
 
         private WarehouseGrid BuildGrid()
@@ -136,15 +167,30 @@ namespace StackUp
             return g;
         }
 
-        private void BuildDock()
+        private void BuildDocks()
+        {
+            MakeDock("DOCK-1", new Vector3(UseStacking ? 4f : 6f, 0.25f, -6f));
+            if (UseStacking) MakeDock("DOCK-2", new Vector3(8f, 0.25f, -6f));
+        }
+
+        private void MakeDock(string id, Vector3 pos)
         {
             var dock = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            dock.name = "DockLane";
-            dock.transform.position = new Vector3(6f, 0.25f, -6f);
-            dock.transform.localScale = new Vector3(3f, 0.5f, 3f);
+            dock.name = id;
+            dock.transform.position = pos;
+            dock.transform.localScale = new Vector3(2.6f, 0.5f, 2.6f);
             SetMat(dock, dockMat);
+            dock.AddComponent<DockLane>().DockLaneId = id;
+        }
 
-            dock.AddComponent<DockLane>().DockLaneId = DockLaneId;
+        private void BuildVerificationStation()
+        {
+            var v = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            v.name = "VerificationStation";
+            v.transform.position = new Vector3(0f, 0.75f, -2f);
+            v.transform.localScale = new Vector3(2f, 1.5f, 1.2f);
+            SetMat(v, verifyMat);
+            v.AddComponent<VerificationStation>();
         }
 
         private PlayerController BuildPlayer()
@@ -182,47 +228,63 @@ namespace StackUp
             rig.Target = target;
         }
 
-        private OrderManager BuildOrders(PlayerController p)
+        private Pallet MakePallet(CustomerOrder order)
         {
-            var om = new GameObject("OrderManager").AddComponent<OrderManager>();
-            om.BindTote(p.Tote);
-            return om;
+            var go = new GameObject($"Pallet_{order.OrderId}");
+            go.transform.position = new Vector3(-3f + palletsCreated * 3f, 0f, -9f);
+            palletsCreated++;
+            var pallet = go.AddComponent<Pallet>();
+            pallet.Init(order, orders, catalog, 3, 3, 4);
+            return pallet;
         }
 
         private void WireInteractables()
         {
-            foreach (var slot in FindObjectsByType<RackSlot>(FindObjectsSortMode.None))
-                slot.Init(grid, orders);
-            foreach (var dock in FindObjectsByType<DockLane>(FindObjectsSortMode.None))
-                dock.Init(orders);
+            foreach (var slot in FindObjectsByType<RackSlot>(FindObjectsSortMode.None)) slot.Init(grid, orders);
+            foreach (var dock in FindObjectsByType<DockLane>(FindObjectsSortMode.None)) dock.Init(orders);
+            foreach (var vs in FindObjectsByType<VerificationStation>(FindObjectsSortMode.None)) vs.Init(orders);
         }
 
         private void BuildUi()
         {
-            hud = new GameObject("HUD").AddComponent<HUD>();
+            EnsureEventSystem();
+
+            var hud = new GameObject("HUD").AddComponent<HUD>();
             hud.Init(orders, game, player);
 
             result = new GameObject("ResultScreen").AddComponent<ResultScreen>();
             result.Init();
-            orders.OrderCompleted += OnOrderCompleted;
+            orders.AllOrdersDone += OnAllOrdersDone;
         }
 
-        private void StartLevel()
+        private static void EnsureEventSystem()
         {
-            game.SetMode(GameMode.Campaign);
-            game.ResetScore();
-            game.SetState(GameState.Running);
-
-            var lines = new List<OrderLine> { new OrderLine { SkuId = SkuId, Quantity = OrderQuantity } };
-            orders.GenerateOrder(lines, DockLaneId);
+            if (EventSystem.current != null) return;
+            var go = new GameObject("EventSystem");
+            go.AddComponent<EventSystem>();
+            go.AddComponent<InputSystemUIInputModule>();
         }
 
-        private void OnOrderCompleted(CustomerOrder order)
+        private void EnqueueOrders()
         {
-            game.AddScore(PointsPerOrder);
+            if (!UseStacking)
+            {
+                orders.Enqueue(orders.MakeOrder(new List<OrderLine> { Line(BoxA, 1) }, "DOCK-1"));
+                return;
+            }
+            orders.Enqueue(orders.MakeOrder(new List<OrderLine> { Line(BoxA, 2) }, "DOCK-1"));
+            orders.Enqueue(orders.MakeOrder(new List<OrderLine> { Line(GlassB, 1), Line(BoxA, 1) }, "DOCK-2"));
+            orders.Enqueue(orders.MakeOrder(new List<OrderLine> { Line(SteelC, 1), Line(BoxA, 1) }, "DOCK-1"));
+        }
+
+        private static OrderLine Line(string sku, int qty) => new OrderLine { SkuId = sku, Quantity = qty };
+
+        private void OnAllOrdersDone()
+        {
+            int best = orders.Score != null ? orders.Score.BestCombo : 0;
             game.CompleteLevel(game.Score);
             if (result != null)
-                result.Show($"Order {order.OrderId} loaded at {order.DockLaneId}\nScore: {game.Score}");
+                result.Show($"All orders loaded!\nScore: {game.Score}\nBest combo: x{best}");
         }
 
         private static void SetMat(GameObject go, Material m)

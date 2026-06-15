@@ -3,8 +3,8 @@ using UnityEngine;
 namespace StackUp
 {
     /// <summary>
-    /// Dock lane. Accepts the active order when it is ready to load and its
-    /// DockLaneId matches. See CLAUDE_CODE_SPEC.md Sections 13.8 / 16.
+    /// Dock lane. Loads the selected order when it is ready; loading at the wrong
+    /// lane is blocked and penalised. See CLAUDE_CODE_SPEC.md Sections 13.8 / 16 / 28.
     /// </summary>
     public class DockLane : MonoBehaviour, IInteractable
     {
@@ -16,22 +16,23 @@ namespace StackUp
         public string GetPrompt()
         {
             if (orders == null) return "";
-            var order = orders.ActiveOrder;
-            if (order == null) return "No order";
-            if (!orders.IsReadyToLoad()) return "Order not ready";
-            if (order.DockLaneId != DockLaneId) return $"Wrong lane (needs {order.DockLaneId})";
-            return $"Load order at {DockLaneId}";
+            var order = orders.SelectedOrder;
+            if (order == null || !orders.IsReadyToLoad(order)) return "No order ready";
+            return order.DockLaneId == DockLaneId
+                ? $"Load order at {DockLaneId}"
+                : $"Wrong lane (needs {order.DockLaneId})";
         }
 
         public bool CanInteract(PlayerController player)
         {
-            return orders != null && orders.IsReadyToLoad()
-                && orders.ActiveOrder.DockLaneId == DockLaneId;
+            // Ready orders are interactable at any lane so a wrong-lane attempt can be penalised.
+            return orders != null && orders.IsReadyToLoad(orders.SelectedOrder);
         }
 
         public void Interact(PlayerController player)
         {
-            if (CanInteract(player)) orders.CompleteActiveOrder(player);
+            if (orders == null) return;
+            orders.TryLoad(orders.SelectedOrder, DockLaneId, out _);
         }
     }
 }

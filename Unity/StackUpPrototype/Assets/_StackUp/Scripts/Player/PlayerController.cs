@@ -13,21 +13,25 @@ namespace StackUp
         public float MoveSpeed = 6f;
         public float TurnSpeed = 12f;
 
-        public Tote Tote { get; private set; }
-        public PlayerInteractor Interactor { get; private set; }
         public Transform HeadMarker { get; set; }
+
+        /// <summary>Set by the level so the player can cycle the active order (Q / Tab / gamepad North).</summary>
+        public OrderManager Orders { get; set; }
 
         private Rigidbody rb;
         private Vector3 moveInput;
+        private Tote tote;
+        private PlayerInteractor interactor;
+
+        // Resolved lazily so the components can be added in any order at runtime.
+        public Tote Tote => tote != null ? tote : (tote = GetComponent<Tote>());
+        public PlayerInteractor Interactor => interactor != null ? interactor : (interactor = GetComponent<PlayerInteractor>());
 
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();
             rb.freezeRotation = true;
-
-            Tote = GetComponent<Tote>();
-            if (Tote == null) Tote = gameObject.AddComponent<Tote>();
-            Interactor = GetComponent<PlayerInteractor>();
+            if (GetComponent<Tote>() == null) gameObject.AddComponent<Tote>();
         }
 
         private void Update()
@@ -41,6 +45,8 @@ namespace StackUp
                 var target = Interactor.Current;
                 if (target != null && target.CanInteract(this)) target.Interact(this);
             }
+
+            if (CyclePressed()) Orders?.CycleSelection();
         }
 
         private void FixedUpdate()
@@ -81,6 +87,15 @@ namespace StackUp
             if (kb != null && kb.eKey.wasPressedThisFrame) return true;
             var pad = Gamepad.current;
             if (pad != null && pad.buttonSouth.wasPressedThisFrame) return true;
+            return false;
+        }
+
+        private static bool CyclePressed()
+        {
+            var kb = Keyboard.current;
+            if (kb != null && (kb.qKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame)) return true;
+            var pad = Gamepad.current;
+            if (pad != null && pad.buttonNorth.wasPressedThisFrame) return true;
             return false;
         }
     }
