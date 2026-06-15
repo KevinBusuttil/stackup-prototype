@@ -1,12 +1,12 @@
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace StackUp
 {
     /// <summary>
-    /// High-level game state machine and entry point. Owns the overall game
-    /// state, selected mode, and score. Gameplay systems subscribe to events
-    /// rather than polling. See CLAUDE_CODE_SPEC.md Section 13.1.
+    /// High-level game state machine, mode/level selection, score, and scene
+    /// navigation. Persists across scene loads. See CLAUDE_CODE_SPEC.md Section 13.1.
     /// </summary>
     public enum GameState
     {
@@ -27,22 +27,26 @@ namespace StackUp
     [DisallowMultipleComponent]
     public class GameManager : MonoBehaviour
     {
+        public const string MainMenuScene = "MainMenu";
+        public const string GameScene = "Game";
+
         public static GameManager Instance { get; private set; }
 
         [SerializeField] private GameMode mode = GameMode.Campaign;
 
-        /// <summary>When true (Bootstrap scene), Start() advances Boot -> MainMenu. Level scenes set this false.</summary>
+        /// <summary>When true (Bootstrap scene), Start() loads the main menu. Level scenes set this false.</summary>
         public bool AdvanceToMenuOnStart = true;
 
         public GameState State { get; private set; } = GameState.Boot;
         public GameMode Mode => mode;
         public int Score { get; private set; }
 
-        /// <summary>Raised whenever the game state changes (old, new).</summary>
+        /// <summary>Selection consumed by the Game scene's LevelBootstrap.</summary>
+        public GameMode PendingMode { get; private set; } = GameMode.Campaign;
+        public int PendingLevelIndex { get; private set; }
+
         public event Action<GameState, GameState> StateChanged;
-        /// <summary>Raised whenever the score changes (new total).</summary>
         public event Action<int> ScoreChanged;
-        /// <summary>Raised when a level finishes (final score).</summary>
         public event Action<int> LevelCompleted;
 
         private void Awake()
@@ -55,20 +59,24 @@ namespace StackUp
 
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            SaveService.Load();
+            SteamServices.Init();
+        }
+
+        private void Update()
+        {
+            SteamServices.Current?.RunCallbacks();
         }
 
         private void Start()
         {
             if (AdvanceToMenuOnStart && State == GameState.Boot)
-            {
-                SetState(GameState.MainMenu);
-            }
+                GoToMainMenu();
         }
 
         public void SetState(GameState next)
         {
             if (next == State) return;
-
             GameState previous = State;
             State = next;
             StateChanged?.Invoke(previous, next);
@@ -92,6 +100,36 @@ namespace StackUp
         {
             SetState(GameState.Results);
             LevelCompleted?.Invoke(finalScore);
+        }
+
+        // -------------------------------------------------------- navigation
+        public void GoToMainMenu()
+        {
+            SetState(GameState.MainMenu);
+            SceneManager.LoadScene(MainMenuScene);
+        }
+
+        public void StartCampaignLevel(int levelIndex)
+        {
+            mode = GameMode.Campaign;
+            PendingMode = GameMode.Campaign;
+            PendingLevelIndex = levelIndex;
+            SetState(GameState.LevelLoading);
+            SceneManager.LoadScene(GameScene);
+        }
+
+        public void StartEndless()
+        {
+            mode = GameMode.Endless;
+            PendingMode = GameMode.Endless;
+            SetState(GameState.LevelLoading);
+            SceneManager.LoadScene(GameScene);
+        }
+
+        public void ReloadCurrent()
+        {
+            if (PendingMode == GameMode.Endless) StartEndless();
+            else StartCampaignLevel(PendingLevelIndex);
         }
     }
 }

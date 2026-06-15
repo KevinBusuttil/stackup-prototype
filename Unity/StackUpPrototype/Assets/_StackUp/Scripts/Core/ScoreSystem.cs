@@ -19,11 +19,20 @@ namespace StackUp
         public int WrongDockPenalty = 25;
         public int FailedVerificationPenalty = 20;
         public int IllegalStackPenalty = 10;
+        public int MissedSlaPenalty = 40;
 
         public int Combo { get; private set; }
         public int BestCombo { get; private set; }
 
         public event Action Changed;
+
+        // Telemetry signals (gameplay raises these; SteamTelemetry listens).
+        public event Action<bool> OrderScored;   // perfect?
+        public event Action WrongPicked;
+        public event Action WrongDocked;
+        public event Action IllegalStacked;
+        public event Action FailedVerified;
+        public event Action SlaMissed;
 
         private GameManager game;
 
@@ -50,11 +59,13 @@ namespace StackUp
             {
                 Combo = 0;
             }
+            OrderScored?.Invoke(perfect);
         }
 
-        public void WrongPick() { Combo = 0; Apply(-WrongPickPenalty); }
-        public void WrongDock() { Combo = 0; Apply(-WrongDockPenalty); }
-        public void FailedVerification() { Combo = 0; Apply(-FailedVerificationPenalty); }
-        public void IllegalStack() => Apply(-IllegalStackPenalty);
+        public void WrongPick() { Combo = 0; Apply(-WrongPickPenalty); WrongPicked?.Invoke(); }
+        public void WrongDock() { Combo = 0; Apply(-WrongDockPenalty); WrongDocked?.Invoke(); }
+        public void FailedVerification() { Combo = 0; Apply(-FailedVerificationPenalty); FailedVerified?.Invoke(); }
+        public void IllegalStack() { Apply(-IllegalStackPenalty); IllegalStacked?.Invoke(); }
+        public void MissedSla() { Combo = 0; Apply(-MissedSlaPenalty); SlaMissed?.Invoke(); }
     }
 }

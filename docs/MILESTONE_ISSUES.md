@@ -60,22 +60,31 @@ when creating GitHub issues.
 > 2 concurrent orders). `Warehouse_Level_01.unity` remains the simple M1 slice.
 
 ### M3 — Content and Progression
-- [ ] 29. Implement campaign level select
-- [ ] 30. Implement level progression save
-- [ ] 31. Create 8 campaign level definitions
-- [ ] 32. Implement endless mode
-- [ ] 33. Create SKU pool and sample item prefabs
-- [ ] 34. Import robot worker variants
-- [ ] 35. Create modular warehouse prefabs
-- [ ] 36. Improve HUD for job queue and SLA timers
+- [x] 29. Implement campaign level select — `MainMenuController` (lock state + best score)
+- [x] 30. Implement level progression save — `SaveService` (JSON: progress + highscores)
+- [x] 31. Create 8 campaign level definitions — `LevelLibrary` / `LevelConfig`
+- [x] 32. Implement endless mode — `OrderManager` waves + `LevelLibrary.Endless`
+- [~] 33. Create SKU pool and sample item prefabs — SKU pool done; item prefabs are
+      primitives (real prefabs need art)
+- [ ] 34. Import robot worker variants — deferred (needs Blender models)
+- [ ] 35. Create modular warehouse prefabs — deferred (needs art); primitives for now
+- [x] 36. Improve HUD for job queue and SLA timers — HUD shows orders, SLA countdown, wave
+
+> Flow: Bootstrap → MainMenu (Campaign / Endless) → Game scene (data-driven by
+> `LevelConfig`). Levels unlock as you complete them; endless tracks high score + wave.
+> #34/#35 are art tasks deferred until the Blender pipeline lands.
 
 ### M4 — Steam Architecture
-- [ ] 37. Create SteamService abstraction
-- [ ] 38. Create MockSteamService
-- [ ] 39. Add achievement event hooks
-- [ ] 40. Add stat event hooks
-- [ ] 41. Add leaderboard interface
-- [ ] 42. Make save system Steam Cloud-compatible
+- [x] 37. Create SteamService abstraction — `ISteamService` + `SteamServices` locator
+- [x] 38. Create MockSteamService — in-memory, logs; default so the game runs without Steam
+- [x] 39. Add achievement event hooks — `SteamTelemetry` (all 12 achievement ids)
+- [x] 40. Add stat event hooks — `SteamTelemetry` (orders/picks/perfect/wrong/rework/combo/time/wave)
+- [x] 41. Add leaderboard interface — `ISteamService.SubmitLeaderboardScore` (endless score/wave, level times)
+- [x] 42. Make save system Steam Cloud-compatible — `SaveService.CloudFiles` at persistentDataPath root
+
+> Gameplay never references Steam: systems raise plain C# events and `SteamTelemetry`
+> is the only translator to `ISteamService`. M6 swaps `MockSteamService` for a real
+> Steamworks.NET implementation via `SteamServices.Init(...)` with no gameplay changes.
 
 ### M5 — Polish and Steam Deck Readiness
 - [ ] 43. Implement occluder fade system

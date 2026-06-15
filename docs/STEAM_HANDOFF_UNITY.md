@@ -38,11 +38,25 @@ Gameplay systems never reference Steamworks directly; they only call
 - Steam Deck / Proton compatibility is an important secondary target
   (test UI readability at 1280×720 from the start).
 
+## Architecture (M4 — implemented)
+
+- `ISteamService` (`Assets/_StackUp/Scripts/Steam/`) — init, achievements, stats,
+  leaderboards, callbacks.
+- `MockSteamService` — in-memory default; the game runs fully without Steam.
+- `SteamServices` — static locator; `SteamServices.Init()` is called from
+  `GameManager.Awake` (defaults to the mock). M6 passes a real implementation.
+- `SteamIds` — central achievement/stat/leaderboard keys (mirror these in the
+  Steamworks partner config).
+- `SteamTelemetry` — the only translator from gameplay events to `ISteamService`.
+  Gameplay systems raise plain C# events and never reference Steam.
+- Save files (`SaveService.CloudFiles`) sit at the persistentDataPath root, ready
+  to map to Steam Cloud.
+
 ## TODO
 
-- [ ] Define `ISteamService` interface (M4)
-- [ ] Add `MockSteamService` (M4)
-- [ ] Document achievement/stat trigger points (M4)
+- [x] Define `ISteamService` interface (M4)
+- [x] Add `MockSteamService` (M4)
+- [x] Document achievement/stat trigger points (M4)
 - [ ] Document Steamworks.NET setup steps (M6)
 - [ ] Document `steam_appid.txt` usage and that it is gitignored
 - [ ] Document Steam build branch workflow (M6)

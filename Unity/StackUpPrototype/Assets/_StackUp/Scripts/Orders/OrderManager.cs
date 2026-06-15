@@ -5,38 +5,47 @@ using UnityEngine;
 namespace StackUp
 {
     /// <summary>
-    /// Owns the order queue and the set of concurrently-active orders, tracks pick
-    /// / stack progress, runs verification + rework, and completes orders on load.
-    /// Works in two modes: simple (collect into the tote, load directly) and full
-    /// (stack onto a per-order pallet, then verify). See CLAUDE_CODE_SPEC.md
-    /// Sections 13.4 / 15 / 24 / 26 / 27.
+    /// Owns the order queue / concurrent active orders, pick + stack progress,
+    /// verification + rework, SLA timers, load + completion, and endless waves.
+    /// Driven by a <see cref="LevelConfig"/>. See CLAUDE_CODE_SPEC.md
+    /// Sections 13.4 / 15 / 24 / 26 / 27 and 6.2.
     /// </summary>
     public class OrderManager : MonoBehaviour
     {
+        private const int OrdersPerWave = 3;
+        private const int EndlessLives = 3;
+
         public bool RequiresStacking { get; private set; }
         public bool RequiresVerification { get; private set; }
+        public bool Endless { get; private set; }
         public int MaxConcurrent { get; private set; } = 1;
 
         private readonly List<CustomerOrder> active = new List<CustomerOrder>();
         private readonly Queue<CustomerOrder> pending = new Queue<CustomerOrder>();
         private readonly Dictionary<string, Pallet> palletByOrder = new Dictionary<string, Pallet>();
+        private readonly Dictionary<string, float> slaRemaining = new Dictionary<string, float>();
         private readonly HashSet<string> imperfect = new HashSet<string>();
         private readonly List<Job> jobs = new List<Job>();
 
         private int selectedIndex;
-        private int orderCounter;
-        private int jobCounter;
+        private int targetCompletions;
+        private float slaSeconds;
 
         private Tote tote;
         private SkuCatalog catalog;
         private Func<CustomerOrder, Pallet> palletFactory;
+        private Func<CustomerOrder> orderFactory;
 
         public ScoreSystem Score { get; private set; }
         public IReadOnlyList<CustomerOrder> ActiveOrders => active;
+        public int CompletedCount { get; private set; }
+        public int FailedCount { get; private set; }
+        public int ReworkJobsCreated { get; private set; }
+        public int Wave => CompletedCount / OrdersPerWave + 1;
 
         public CustomerOrder SelectedOrder =>
             active.Count > 0 ? active[Mathf.Clamp(selectedIndex, 0, active.Count - 1)] : null;
-        public CustomerOrder ActiveOrder => SelectedOrder; // back-compat
+        public CustomerOrder ActiveOrder => SelectedOrder;
         public int SelectedIndex => selectedIndex;
 
         public int ActiveReworkJobs
@@ -52,21 +61,27 @@ namespace StackUp
 
         public event Action OrdersChanged;
         public event Action<CustomerOrder> OrderCompleted;
-        public event Action AllOrdersDone;
+        public event Action<CustomerOrder> OrderFailed;
+        public event Action AllOrdersDone;     // campaign win
+        public event Action EndlessEnded;      // endless out of lives
         public event Action<VerificationResult> VerificationReported;
 
         // ---------------------------------------------------------------- setup
-        public void Init(Tote tote, ScoreSystem score, SkuCatalog catalog,
-                         bool requiresStacking, bool requiresVerification, int maxConcurrent,
-                         Func<CustomerOrder, Pallet> palletFactory)
+        public void Init(Tote tote, ScoreSystem score, SkuCatalog catalog, LevelConfig config,
+                         Func<CustomerOrder, Pallet> palletFactory, Func<CustomerOrder> orderFactory)
         {
             BindTote(tote);
             Score = score;
             this.catalog = catalog;
-            RequiresStacking = requiresStacking;
-            RequiresVerification = requiresVerification;
-            MaxConcurrent = Mathf.Max(1, maxConcurrent);
             this.palletFactory = palletFactory;
+            this.orderFactory = orderFactory;
+
+            RequiresStacking = config.UseStacking;
+            RequiresVerification = config.UseVerification;
+            Endless = config.Endless;
+            MaxConcurrent = Mathf.Max(1, config.MaxConcurrent);
+            targetCompletions = config.OrderCount;
+            slaSeconds = config.SlaSeconds;
         }
 
         public void BindTote(Tote t)
@@ -83,6 +98,7 @@ namespace StackUp
 
         private void OnToteChanged() => OrdersChanged?.Invoke();
 
+        private int orderCounter;
         public CustomerOrder MakeOrder(IList<OrderLine> lines, string dockLaneId, float dueSeconds = 0f)
         {
             orderCounter++;
@@ -107,11 +123,16 @@ namespace StackUp
 
         private void FillActive()
         {
-            while (active.Count < MaxConcurrent && pending.Count > 0)
+            while (active.Count < MaxConcurrent)
             {
-                var o = pending.Dequeue();
+                CustomerOrder o = null;
+                if (Endless) o = orderFactory != null ? orderFactory() : null;
+                else if (pending.Count > 0) o = pending.Dequeue();
+                if (o == null) break;
+
                 o.State = OrderState.Picking;
                 active.Add(o);
+                slaRemaining[o.OrderId] = slaSeconds > 0f ? slaSeconds : -1f;
                 if (RequiresStacking && palletFactory != null)
                 {
                     var p = palletFactory(o);
@@ -123,6 +144,11 @@ namespace StackUp
         public Pallet PalletFor(CustomerOrder order)
         {
             return order != null && palletByOrder.TryGetValue(order.OrderId, out var p) ? p : null;
+        }
+
+        public float GetSlaRemaining(CustomerOrder order)
+        {
+            return order != null && slaRemaining.TryGetValue(order.OrderId, out float r) ? r : -1f;
         }
 
         // ------------------------------------------------------------ selection
@@ -142,7 +168,6 @@ namespace StackUp
             return t;
         }
 
-        /// <summary>How much of a SKU is committed to the order: pallet contents (stacking) or tote (simple).</summary>
         public int Collected(CustomerOrder order, string skuId)
         {
             if (order == null || skuId == null) return 0;
@@ -170,7 +195,6 @@ namespace StackUp
 
         public bool IsReadyToLoad() => IsReadyToLoad(SelectedOrder);
 
-        /// <summary>True if the player should still pick this SKU (more is needed than is already carried).</summary>
         public bool AnyActiveOrderNeeds(string skuId)
         {
             int inTote = tote != null ? tote.Inventory.GetQuantity(skuId) : 0;
@@ -196,7 +220,6 @@ namespace StackUp
         }
 
         // ------------------------------------------------------------- stacking
-        /// <summary>A SKU in the tote that this order still needs on its pallet, or null.</summary>
         public string NextStackableSku(CustomerOrder order)
         {
             if (order == null || tote == null) return null;
@@ -274,9 +297,10 @@ namespace StackUp
         {
             foreach (var j in jobs)
                 if (j.OrderId == order.OrderId && j.Type == JobType.Rework && j.State == JobState.Active)
-                    return; // already has one open
+                    return;
 
             jobCounter++;
+            ReworkJobsCreated++;
             jobs.Add(new Job
             {
                 JobId = $"RWK-{jobCounter:000}",
@@ -285,6 +309,7 @@ namespace StackUp
                 State = JobState.Active
             });
         }
+        private int jobCounter;
 
         private void CompleteReworkJobs(CustomerOrder order)
         {
@@ -318,28 +343,77 @@ namespace StackUp
             bool perfect = !imperfect.Contains(order.OrderId);
             Score?.CompleteOrder(perfect, 0f);
 
-            if (RequiresStacking)
+            CleanupOrder(order);
+            CompletedCount++;
+
+            if (!Endless && CompletedCount >= targetCompletions)
             {
-                if (palletByOrder.TryGetValue(order.OrderId, out var p))
-                {
-                    if (p != null) Destroy(p.gameObject);
-                    palletByOrder.Remove(order.OrderId);
-                }
+                OrdersChanged?.Invoke();
+                AllOrdersDone?.Invoke();
+                return;
             }
-            else if (tote != null)
-            {
-                // Simple mode: the tote is the container, so consume the loaded items.
-                foreach (var l in order.Lines) tote.Remove(l.SkuId, l.Quantity);
-            }
-            active.Remove(order);
-            imperfect.Remove(order.OrderId);
-            if (selectedIndex >= active.Count) selectedIndex = Mathf.Max(0, active.Count - 1);
 
             FillActive();
             OrderCompleted?.Invoke(order);
             OrdersChanged?.Invoke();
+        }
 
-            if (active.Count == 0 && pending.Count == 0) AllOrdersDone?.Invoke();
+        private void FailOrder(CustomerOrder order)
+        {
+            order.State = OrderState.Failed;
+            Score?.MissedSla();
+            CleanupOrder(order);
+            FailedCount++;
+
+            if (Endless && FailedCount >= EndlessLives)
+            {
+                OrdersChanged?.Invoke();
+                EndlessEnded?.Invoke();
+                return;
+            }
+
+            if (!Endless && orderFactory != null)
+                pending.Enqueue(orderFactory()); // replacement so the target stays reachable
+
+            FillActive();
+            OrderFailed?.Invoke(order);
+            OrdersChanged?.Invoke();
+        }
+
+        private void CleanupOrder(CustomerOrder order)
+        {
+            if (palletByOrder.TryGetValue(order.OrderId, out var p))
+            {
+                if (p != null) Destroy(p.gameObject);
+                palletByOrder.Remove(order.OrderId);
+            }
+            else if (!RequiresStacking && tote != null)
+            {
+                foreach (var l in order.Lines) tote.Remove(l.SkuId, l.Quantity);
+            }
+            slaRemaining.Remove(order.OrderId);
+            imperfect.Remove(order.OrderId);
+            active.Remove(order);
+            if (selectedIndex >= active.Count) selectedIndex = Mathf.Max(0, active.Count - 1);
+        }
+
+        // ----------------------------------------------------------------- tick
+        private readonly List<CustomerOrder> expired = new List<CustomerOrder>();
+
+        private void Update()
+        {
+            if (slaSeconds <= 0f || active.Count == 0) return;
+
+            expired.Clear();
+            float dt = Time.deltaTime;
+            foreach (var o in active)
+            {
+                if (!slaRemaining.TryGetValue(o.OrderId, out float r) || r < 0f) continue;
+                r -= dt;
+                slaRemaining[o.OrderId] = r;
+                if (r <= 0f) expired.Add(o);
+            }
+            foreach (var o in expired) FailOrder(o);
         }
     }
 }
