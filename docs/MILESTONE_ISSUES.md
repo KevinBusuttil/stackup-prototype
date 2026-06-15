@@ -30,17 +30,19 @@ when creating GitHub issues.
 - [x] 8. Add Windows build instructions — `docs/BUILD_WINDOWS.md`
 
 ### M1 — Vertical Slice
-- [ ] 9. Implement PlayerController movement
-- [ ] 10. Implement high-angle Cinemachine camera
-- [ ] 11. Create small test warehouse scene
-- [ ] 12. Implement WarehouseGrid slot registry
-- [ ] 13. Implement basic SKU stock data
-- [ ] 14. Implement basic order generation
-- [ ] 15. Implement rack pick interaction
-- [ ] 16. Implement tote inventory
-- [ ] 17. Implement dock loading interaction
-- [ ] 18. Implement basic HUD
-- [ ] 19. Implement level result screen
+- [x] 9. Implement PlayerController movement — Input System (keyboard + gamepad)
+- [~] 10. Implement high-angle Cinemachine camera — `HighAngleCameraRig` (custom,
+      dependency-free; swap to Cinemachine later)
+- [x] 11. Create small test warehouse scene — `Warehouse_Level_01` + `LevelBootstrap`
+      (builds floor/rack/dock/player at runtime)
+- [x] 12. Implement WarehouseGrid slot registry
+- [x] 13. Implement basic SKU stock data — `SlotMarker` stock + `SkuCatalog`
+- [x] 14. Implement basic order generation — `OrderManager`
+- [x] 15. Implement rack pick interaction — `RackSlot` + `IInteractable`/`PlayerInteractor`
+- [x] 16. Implement tote inventory — `ToteInventory` + `Tote`
+- [x] 17. Implement dock loading interaction — `DockLane`
+- [x] 18. Implement basic HUD — `HUD` (job, tote, score, prompt)
+- [x] 19. Implement level result screen — `ResultScreen`
 
 ### M2 — Core Gameplay Loop
 - [ ] 20. Implement pallet grid system
