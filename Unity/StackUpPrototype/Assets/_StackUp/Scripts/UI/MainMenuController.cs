@@ -17,6 +17,7 @@ namespace StackUp
         private GameObject mainPanel;
         private GameObject selectPanel;
         private GameObject firstButton;
+        private GameObject selectFirstButton;
         private SettingsMenu settings;
 
         private void Start()
@@ -69,7 +70,8 @@ namespace StackUp
             selectPanel = Panel(canvas.transform, "SelectPanel");
             Text(selectPanel.transform, "SelTitle", new Vector2(0, 280), 48, "Select Level");
             BuildLevelButtons(selectPanel.transform);
-            MakeButton(selectPanel.transform, "Back", new Vector2(0, -300), new Color(0.45f, 0.45f, 0.50f), "Back", ShowMain);
+            var back = MakeButton(selectPanel.transform, "Back", new Vector2(0, -300), new Color(0.45f, 0.45f, 0.50f), "Back", ShowMain);
+            if (selectFirstButton == null) selectFirstButton = back;
         }
 
         private void BuildLevelButtons(Transform parent)
@@ -94,11 +96,12 @@ namespace StackUp
                 var btn = MakeButton(parent, $"Lvl{index}", new Vector2(x, y), col, label,
                     () => { if (unlocked) GameManager.Instance.StartCampaignLevel(index); });
                 btn.GetComponent<Button>().interactable = unlocked;
+                if (unlocked && selectFirstButton == null) selectFirstButton = btn;
             }
         }
 
         private void ShowMain() { mainPanel.SetActive(true); selectPanel.SetActive(false); UiKit.SelectFirst(firstButton); }
-        private void ShowSelect() { mainPanel.SetActive(false); selectPanel.SetActive(true); }
+        private void ShowSelect() { mainPanel.SetActive(false); selectPanel.SetActive(true); UiKit.SelectFirst(selectFirstButton); }
 
         private void OpenSettings()
         {

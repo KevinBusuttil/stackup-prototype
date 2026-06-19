@@ -36,6 +36,8 @@ namespace StackUp
 
         private void Update()
         {
+            if (Time.timeScale == 0f) { moveInput = Vector3.zero; return; } // paused
+
             Vector2 move = ReadMove();
             moveInput = new Vector3(move.x, 0f, move.y);
             if (moveInput.sqrMagnitude > 1f) moveInput.Normalize();

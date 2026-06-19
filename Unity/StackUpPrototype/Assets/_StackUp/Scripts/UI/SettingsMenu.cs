@@ -75,8 +75,8 @@ namespace StackUp
             Refresh();
         }
 
-        private void AdjustMaster(float d) { SaveService.Settings.MasterVolume = Clamp01(SaveService.Settings.MasterVolume + d); AudioManager.Play(Sfx.Scan); Refresh(); }
-        private void AdjustMusic(float d) { SaveService.Settings.MusicVolume = Clamp01(SaveService.Settings.MusicVolume + d); Refresh(); }
+        private void AdjustMaster(float d) { SaveService.Settings.MasterVolume = Clamp01(SaveService.Settings.MasterVolume + d); AudioManager.RefreshMix(); AudioManager.Play(Sfx.Scan); Refresh(); }
+        private void AdjustMusic(float d) { SaveService.Settings.MusicVolume = Clamp01(SaveService.Settings.MusicVolume + d); AudioManager.RefreshMix(); Refresh(); }
         private void AdjustSfx(float d) { SaveService.Settings.SfxVolume = Clamp01(SaveService.Settings.SfxVolume + d); AudioManager.Play(Sfx.Scan); Refresh(); }
 
         private static float Clamp01(float v) => Mathf.Clamp01(Mathf.Round(v * 10f) / 10f);

@@ -1,0 +1,16 @@
+"appbuild"
+{
+	"appid"	"YOUR_APP_ID"
+	"desc"	"Stack Up! build"
+	"buildoutput"	"../output/"
+	"contentroot"	"./content/"
+
+	// Leave empty to upload without publishing. Set to a branch (e.g. "beta")
+	// to auto-publish to that Steam branch. Do NOT auto-publish to "default".
+	"setlive"	""
+
+	"depots"
+	{
+		"YOUR_DEPOT_ID"	"depot_build.vdf"
+	}
+}

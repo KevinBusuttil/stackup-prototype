@@ -1,0 +1,19 @@
+{
+    "name": "StackUp.Steam",
+    "rootNamespace": "StackUp",
+    "references": [
+        "StackUp",
+        "com.rlabrecque.steamworks.net"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "STEAMWORKS_NET"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

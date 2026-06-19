@@ -1,0 +1,42 @@
+name: Build
+
+# Run manually, or automatically on a version tag (e.g. v0.1.0).
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  windows:
+    name: Windows64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/cache@v4
+        with:
+          path: Unity/StackUpPrototype/Library
+          key: Library-${{ hashFiles('Unity/StackUpPrototype/Assets/**', 'Unity/StackUpPrototype/Packages/**', 'Unity/StackUpPrototype/ProjectSettings/**') }}
+          restore-keys: Library-
+
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: Unity/StackUpPrototype
+          targetPlatform: StandaloneWindows64
+          buildName: StackUp
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StackUp-Windows64
+          path: build
+
+  # To publish to Steam, add a follow-up job that downloads the artifact and runs
+  # ci/steam/upload.sh with STEAM_USER/STEAM_PASS secrets. Kept manual/local for
+  # now because it needs Steam Guard handling. See docs/STEAM_RELEASE_CHECKLIST.md.

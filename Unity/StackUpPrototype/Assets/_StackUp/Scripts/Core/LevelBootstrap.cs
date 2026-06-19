@@ -42,6 +42,7 @@ namespace StackUp
 
         private void Start()
         {
+            Time.timeScale = 1f; // ensure a fresh scene never starts frozen from a prior pause
             game = EnsureGameManager();
             cfg = ResolveConfig();
 
@@ -244,6 +245,7 @@ namespace StackUp
             dock.transform.localScale = new Vector3(2.6f, 0.5f, 2.6f);
             SetMat(dock, dockMat);
             dock.AddComponent<DockLane>().DockLaneId = id;
+            AttachVisual(dock, "DockLaneMarker", 0.25f);
         }
 
         private void BuildVerificationStation()
@@ -254,6 +256,7 @@ namespace StackUp
             v.transform.localScale = new Vector3(2f, 1.5f, 1.2f);
             SetMat(v, verifyMat);
             v.AddComponent<VerificationStation>();
+            AttachVisual(v, "VerificationStation", 0.75f);
         }
 
         private PlayerController BuildPlayer()
@@ -274,8 +277,30 @@ namespace StackUp
             head.SetParent(go.transform, false);
             head.localPosition = new Vector3(0f, 1f, 0f);
             pc.HeadMarker = head;
+            AttachVisual(go, "PickerBot", 1.0f);
             return pc;
         }
+
+        /// <summary>
+        /// Overlays an imported art prefab on a gameplay primitive (if present),
+        /// hiding the placeholder mesh but keeping its collider. Counters the
+        /// host's (often non-uniform) scale so the model keeps its authored size,
+        /// and drops it so its base sits on the floor.
+        /// </summary>
+        private static void AttachVisual(GameObject host, string artName, float centerHeight)
+        {
+            var v = PrefabLibrary.Spawn(artName, host.transform);
+            if (v == null) return;
+
+            Vector3 hs = host.transform.localScale;
+            v.transform.localScale = new Vector3(Inv(hs.x), Inv(hs.y), Inv(hs.z));
+            v.transform.localPosition = new Vector3(0f, -centerHeight * Inv(hs.y), 0f);
+
+            var r = host.GetComponent<Renderer>();
+            if (r != null) r.enabled = false;
+        }
+
+        private static float Inv(float v) => Mathf.Approximately(v, 0f) ? 1f : 1f / v;
 
         private void BuildCamera(Transform target)
         {
@@ -344,6 +369,10 @@ namespace StackUp
 
             result = new GameObject("ResultScreen").AddComponent<ResultScreen>();
             result.Init();
+
+            var pause = new GameObject("PauseMenu").AddComponent<PauseMenu>();
+            pause.Init();
+
             orders.AllOrdersDone += OnCampaignWin;
             orders.EndlessEnded += OnEndlessEnded;
         }

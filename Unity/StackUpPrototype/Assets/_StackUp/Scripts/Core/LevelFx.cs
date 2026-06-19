@@ -71,7 +71,8 @@ namespace StackUp
         private void OnWrongPicked() { AudioManager.Play(Sfx.Warning); feedback?.Popup("Wrong pick!", Bad); }
         private void OnWrongDocked() { AudioManager.Play(Sfx.Warning); feedback?.Popup("Wrong dock!", Bad); }
         private void OnIllegalStacked() { AudioManager.Play(Sfx.Warning); feedback?.Popup("Can't stack there!", Bad); }
-        private void OnFailedVerified() { AudioManager.Play(Sfx.VerifyFail); feedback?.Popup("Verification failed", Bad); }
+        // Sound for a failed verify is played by OnVerification; this only shows the popup.
+        private void OnFailedVerified() => feedback?.Popup("Verification failed", Bad);
         private void OnSlaMissed() { AudioManager.Play(Sfx.Warning); feedback?.Popup("Missed SLA!", Bad); }
 
         private void OnVerification(VerificationResult r)
