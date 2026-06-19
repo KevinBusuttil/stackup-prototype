@@ -104,12 +104,18 @@ when creating GitHub issues.
 > Audio uses runtime-generated tones as placeholders (real SFX assets later).
 > Occluder fade is wired to racks; walls/scenery use the same `FadeableObject`.
 
-### M6 — Release Preparation (Later)
-- [ ] 51. Integrate Steamworks
-- [ ] 52. Implement Steam achievements
-- [ ] 53. Implement Steam stats
-- [ ] 54. Implement Steam leaderboards
-- [ ] 55. Implement Steam Cloud save sync
-- [ ] 56. Create Steam build branch workflow
-- [ ] 57. Create QA checklist
-- [ ] 58. Produce release candidate build
+### M6 — Release Preparation
+- [x] 51. Integrate Steamworks — `SteamworksService` (Steamworks.NET), opt-in via
+      `STEAMWORKS_NET` define / `StackUp.Steam` assembly; self-registers, mock fallback
+- [x] 52. Implement Steam achievements — `SteamUserStats` in `SteamworksService`
+- [x] 53. Implement Steam stats — `SetStat`/`GetStat`/`StoreStats`
+- [x] 54. Implement Steam leaderboards — `FindOrCreateLeaderboard` + `UploadLeaderboardScore`
+- [~] 55. Implement Steam Cloud save sync — `SaveService.CloudFiles` + Auto-Cloud config (no code); see STEAMWORKS_SETUP.md
+- [x] 56. Create Steam build branch workflow — `.github/workflows/build.yml` + `ci/steam/*.vdf` + `upload.sh`
+- [x] 57. Create QA checklist — `docs/QA_CHECKLIST.md`
+- [~] 58. Produce release candidate build — `BuildScript.BuildWindows` + CI build workflow
+      (the actual RC build + Steam upload run on your machine/CI with credentials)
+
+> Real Steam needs the Steamworks SDK + app id + Steam running, so #51–#55 are
+> implemented as opt-in code/config you enable per docs/STEAMWORKS_SETUP.md; the
+> default build stays on the mock. #58 produces the build via CI/BuildScript.

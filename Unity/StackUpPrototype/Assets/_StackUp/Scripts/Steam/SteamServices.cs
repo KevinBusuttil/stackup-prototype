@@ -12,8 +12,16 @@ namespace StackUp
         public static void Init(ISteamService service = null)
         {
             if (Current != null) return;
-            Current = service ?? new MockSteamService();
-            Current.Initialize();
+
+            var svc = service ?? new MockSteamService();
+            if (!svc.Initialize() && !(svc is MockSteamService))
+            {
+                // A real service (e.g. Steamworks) failed to start — fall back to the mock
+                // so the game still runs (Steam not installed / not running / no app id).
+                svc = new MockSteamService();
+                svc.Initialize();
+            }
+            Current = svc;
         }
 
         public static void Shutdown()
