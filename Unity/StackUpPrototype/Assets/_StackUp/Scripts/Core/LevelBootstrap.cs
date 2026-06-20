@@ -50,6 +50,7 @@ namespace StackUp
 
             CreateMaterials();
             BuildEnvironment();
+            BuildDecor();
             catalog = BuildCatalog();
             BuildRacks();
             grid = BuildGrid();
@@ -181,9 +182,80 @@ namespace StackUp
         {
             var root = new GameObject("FloorMarkings").transform; // unscaled, so metres map 1:1
             ArtKit.FloorDecal(root, "AisleLine", new Vector3(0f, 0f, 0.5f), new Vector2(0.25f, 30f), ArtKit.AisleLine);
+            ArtKit.FloorDecal(root, "CrossAisle", new Vector3(0f, 0f, 2.5f), new Vector2(26f, 0.25f), ArtKit.AisleLine);
             ArtKit.FloorDecal(root, "ZoneStorage", new Vector3(-4.5f, 0f, 7f), new Vector2(13f, 3.2f), ArtKit.RackMetal);
             ArtKit.FloorDecal(root, "ZoneStaging", new Vector3(0f, 0f, -9f), new Vector2(14f, 3f), ArtKit.ZoneStaging);
             ArtKit.FloorDecal(root, "ZoneVerify", new Vector3(0f, 0f, -2f), new Vector2(4f, 3f), ArtKit.ZoneReceiving);
+            // hazard safety lane along the dock approach
+            ArtKit.FloorDecal(root, "SafetyLane", new Vector3(0f, 0f, -4.5f), new Vector2(24f, 0.4f), ArtKit.VerifyAmber);
+        }
+
+        // ------------------------------------------------------- set dressing
+        /// <summary>
+        /// Builds the static, non-gameplay warehouse: an enclosing shell (walls +
+        /// lit clerestory windows), deep background rack aisles, and ground clutter.
+        /// Walls/decor racks carry colliders (they bound the player and the
+        /// occluder-fade system can fade them); small props are collider-free.
+        /// </summary>
+        private void BuildDecor()
+        {
+            // --- shell -----------------------------------------------------
+            MakeWall("BackWall", new Vector3(0f, 0f, 11.5f), 30f, 5.5f, 0f, true);
+            MakeWall("LeftWall", new Vector3(-14.5f, 0f, -0.5f), 27f, 4.5f, 90f, true);
+            MakeWall("RightWall", new Vector3(14.5f, 0f, -0.5f), 27f, 4.5f, 90f, true);
+            MakeWall("FrontWallL", new Vector3(-8.5f, 0f, -12f), 12f, 3.5f, 0f, false);
+            MakeWall("FrontWallR", new Vector3(8.5f, 0f, -12f), 12f, 3.5f, 0f, false);
+
+            // --- background storage aisles --------------------------------
+            int seed = 1;
+            for (float x = -12f; x <= 12.01f; x += 3f) MakeDecorRack(new Vector3(x, 0f, 9.4f), seed++);
+            for (float z = -6f; z <= 6.01f; z += 3f) { MakeDecorRack(new Vector3(-12.6f, 0f, z), seed++); MakeDecorRack(new Vector3(12.6f, 0f, z), seed++); }
+
+            // --- ground clutter -------------------------------------------
+            MakeProp(t => ArtKit.BuildPalletStack(t, 2), new Vector3(-7.5f, 0f, -9.6f), 0f);
+            MakeProp(t => ArtKit.BuildPalletStack(t, 3), new Vector3(9f, 0f, -9.6f), 18f);
+            MakeProp(t => ArtKit.BuildPalletStack(t, 1), new Vector3(-11.5f, 0f, 3f), 0f);
+            MakeProp(t => ArtKit.BuildPalletStack(t, 2), new Vector3(11.5f, 0f, -3f), 0f);
+            // bollards/cones kept off the central pick→stack→verify→dock path
+            foreach (var bp in new[]
+            {
+                new Vector3(-2.8f, 0f, -11.4f), new Vector3(2.8f, 0f, -11.4f), // flank the loading doorway
+                new Vector3(-13f, 0f, -9f), new Vector3(13f, 0f, -9f),         // staging corners
+                new Vector3(-10.5f, 0f, -4.6f), new Vector3(10.5f, 0f, -4.6f), // safety-lane ends
+            }) MakeProp(ArtKit.BuildBollard, bp, 0f);
+            MakeProp(ArtKit.BuildCone, new Vector3(-2.8f, 0f, -3.4f), 0f);
+            MakeProp(ArtKit.BuildCone, new Vector3(2.8f, 0f, -3.4f), 0f);
+        }
+
+        private static void MakeWall(string name, Vector3 center, float length, float height, float rotY, bool windows)
+        {
+            var go = new GameObject(name);
+            go.transform.position = center;
+            go.transform.rotation = Quaternion.Euler(0f, rotY, 0f);
+            ArtKit.BuildWallSegment(go.transform, length, height, 0.3f, windows); // children first…
+            var col = go.AddComponent<BoxCollider>();
+            col.center = new Vector3(0f, height * 0.5f, 0f);
+            col.size = new Vector3(length, height, 0.3f);
+            go.AddComponent<FadeableObject>();                                    // …then fade caches them
+        }
+
+        private static void MakeDecorRack(Vector3 pos, int seed)
+        {
+            var go = new GameObject("DecorRack");
+            go.transform.position = pos;
+            ArtKit.BuildTallRack(go.transform, seed);
+            var col = go.AddComponent<BoxCollider>();
+            col.center = new Vector3(0f, 1.3f, 0f);
+            col.size = new Vector3(1.3f, 2.6f, 1.1f);
+            go.AddComponent<FadeableObject>();
+        }
+
+        private static void MakeProp(System.Action<Transform> builder, Vector3 pos, float rotY)
+        {
+            var go = new GameObject("Prop");
+            go.transform.position = pos;
+            go.transform.rotation = Quaternion.Euler(0f, rotY, 0f);
+            builder(go.transform);
         }
 
         private SkuCatalog BuildCatalog()

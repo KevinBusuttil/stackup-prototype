@@ -158,10 +158,15 @@ Still to do (documented, not yet built):
 - [x] Prefab-or-procedural for **all** main hosts (so imported art drops in).
 - [x] HUD backing panels for 720p legibility.
 - [x] Build hygiene: SampleScene disabled in build settings.
+- [x] Enclosing **warehouse shell** (walls + lit clerestory windows) so the space
+      feels like a room, not objects on a plane.
+- [x] **Background rack aisles** (deep storage rows on three sides) for depth.
+- [x] **Ground clutter** (loose pallets/crates, safety bollards, cones) +
+      expanded floor markings (cross aisle, hazard safety lane).
 - [ ] Import remaining Blender props into `Resources/StackUpArt` (RackBay, Pallet,
       boxes, walls) — *manual Unity step.*
 - [ ] HUD order-state colour-coding + SKU chips.
-- [ ] Walls / ceiling trims to frame the room.
+- [ ] Optional: hanging zone signage + a subtle skybox.
 
 ---
 
