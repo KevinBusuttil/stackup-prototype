@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace StackUp
 {
@@ -134,10 +136,10 @@ namespace StackUp
         {
             lit = Shader.Find("Universal Render Pipeline/Lit");
             if (lit == null) lit = Shader.Find("Standard");
-            floorMat = Mat(new Color(0.55f, 0.55f, 0.58f));
-            playerMat = Mat(new Color(0.20f, 0.70f, 0.90f));
-            dockMat = Mat(new Color(0.20f, 0.75f, 0.35f));
-            verifyMat = Mat(new Color(0.85f, 0.65f, 0.20f));
+            floorMat = Mat(ArtKit.Floor);
+            playerMat = Mat(ArtKit.PlayerBlue);
+            dockMat = Mat(ArtKit.DockGreen);
+            verifyMat = Mat(ArtKit.VerifyAmber);
         }
 
         private Material Mat(Color c) => new Material(lit) { color = c };
@@ -148,12 +150,40 @@ namespace StackUp
             floor.name = "Floor";
             floor.transform.localScale = new Vector3(4f, 1f, 4f);
             SetMat(floor, floorMat);
+            BuildFloorMarkings();
 
+            // Key light — warm, soft-shadowed.
             var light = new GameObject("Directional Light").AddComponent<Light>();
             light.type = LightType.Directional;
             light.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-            light.intensity = 1.1f;
+            light.color = new Color(1f, 0.97f, 0.90f);
+            light.intensity = 1.15f;
             light.shadows = LightShadows.Soft;
+            light.shadowStrength = 0.65f;
+
+            // Cool fill from the opposite side so shadowed faces don't go murky.
+            var fill = new GameObject("Fill Light").AddComponent<Light>();
+            fill.type = LightType.Directional;
+            fill.transform.rotation = Quaternion.Euler(40f, 150f, 0f);
+            fill.color = new Color(0.72f, 0.80f, 0.95f);
+            fill.intensity = 0.35f;
+            fill.shadows = LightShadows.None;
+
+            // Bright, slightly cool gradient ambient — keeps the toy look readable.
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.62f, 0.68f, 0.78f);
+            RenderSettings.ambientEquatorColor = new Color(0.52f, 0.53f, 0.56f);
+            RenderSettings.ambientGroundColor = new Color(0.34f, 0.32f, 0.30f);
+        }
+
+        /// <summary>Painted aisle line + zone tints so the floor reads as a real warehouse.</summary>
+        private void BuildFloorMarkings()
+        {
+            var root = new GameObject("FloorMarkings").transform; // unscaled, so metres map 1:1
+            ArtKit.FloorDecal(root, "AisleLine", new Vector3(0f, 0f, 0.5f), new Vector2(0.25f, 30f), ArtKit.AisleLine);
+            ArtKit.FloorDecal(root, "ZoneStorage", new Vector3(-4.5f, 0f, 7f), new Vector2(13f, 3.2f), ArtKit.RackMetal);
+            ArtKit.FloorDecal(root, "ZoneStaging", new Vector3(0f, 0f, -9f), new Vector2(14f, 3f), ArtKit.ZoneStaging);
+            ArtKit.FloorDecal(root, "ZoneVerify", new Vector3(0f, 0f, -2f), new Vector2(4f, 3f), ArtKit.ZoneReceiving);
         }
 
         private SkuCatalog BuildCatalog()
@@ -205,14 +235,18 @@ namespace StackUp
             go.transform.localScale = new Vector3(1.2f, 1.2f, 1.2f);
 
             var def = catalog != null ? catalog.Get(sku) : null;
-            SetMat(go, Mat(def != null ? def.DisplayColor : new Color(0.4f, 0.4f, 0.45f)));
+            Color stockColor = def != null ? def.DisplayColor : new Color(0.55f, 0.56f, 0.60f);
 
             var marker = go.AddComponent<SlotMarker>();
             marker.SlotId = slotId;
             marker.ZoneId = "ZONE-A";
             marker.InitialStock.Add(new SlotMarker.StockEntry { SkuId = sku, Quantity = qty });
             go.AddComponent<RackSlot>();
-            go.AddComponent<FadeableObject>(); // racks fade when they block the camera (Section 8)
+
+            // Build the rack visual BEFORE FadeableObject so its renderers are
+            // cached and fade with the bay when it blocks the camera (Section 8).
+            AttachArt(go, "RackBay", 1.0f, root => ArtKit.BuildRackFrame(root, stockColor));
+            go.AddComponent<FadeableObject>();
         }
 
         private WarehouseGrid BuildGrid()
@@ -245,7 +279,7 @@ namespace StackUp
             dock.transform.localScale = new Vector3(2.6f, 0.5f, 2.6f);
             SetMat(dock, dockMat);
             dock.AddComponent<DockLane>().DockLaneId = id;
-            AttachVisual(dock, "DockLaneMarker", 0.25f);
+            AttachArt(dock, "DockLaneMarker", 0.25f, ArtKit.BuildDockPad);
         }
 
         private void BuildVerificationStation()
@@ -256,7 +290,7 @@ namespace StackUp
             v.transform.localScale = new Vector3(2f, 1.5f, 1.2f);
             SetMat(v, verifyMat);
             v.AddComponent<VerificationStation>();
-            AttachVisual(v, "VerificationStation", 0.75f);
+            AttachArt(v, "VerificationStation", 0.75f, ArtKit.BuildScannerProp);
         }
 
         private PlayerController BuildPlayer()
@@ -277,20 +311,35 @@ namespace StackUp
             head.SetParent(go.transform, false);
             head.localPosition = new Vector3(0f, 1f, 0f);
             pc.HeadMarker = head;
-            AttachVisual(go, "PickerBot", 1.0f);
+            AttachArt(go, "PickerBot", 1.0f, root => ArtKit.BuildRobotFallback(root, ArtKit.HiVis));
             return pc;
         }
 
         /// <summary>
-        /// Overlays an imported art prefab on a gameplay primitive (if present),
-        /// hiding the placeholder mesh but keeping its collider. Counters the
-        /// host's (often non-uniform) scale so the model keeps its authored size,
-        /// and drops it so its base sits on the floor.
+        /// Gives a gameplay primitive a real visual: an imported art prefab if one
+        /// exists in Resources/StackUpArt, otherwise the procedural <paramref name="fallback"/>
+        /// "set dressing". Either way the placeholder mesh is hidden (its collider
+        /// kept), so gameplay is identical with or without imported assets.
         /// </summary>
-        private static void AttachVisual(GameObject host, string artName, float centerHeight)
+        private static void AttachArt(GameObject host, string prefabName, float centerHeight, System.Action<Transform> fallback)
+        {
+            if (!AttachVisual(host, prefabName, centerHeight) && fallback != null)
+                fallback(ArtKit.ScaledRoot(host, centerHeight, prefabName + "_Visual"));
+
+            var r = host.GetComponent<Renderer>();
+            if (r != null) r.enabled = false;
+        }
+
+        /// <summary>
+        /// Overlays an imported art prefab on a gameplay primitive if present.
+        /// Counters the host's (often non-uniform) scale so the model keeps its
+        /// authored size, drops it so its base sits on the floor, and re-tints it
+        /// to URP. Returns false (caller falls back to primitives) when no prefab.
+        /// </summary>
+        private static bool AttachVisual(GameObject host, string artName, float centerHeight)
         {
             var v = PrefabLibrary.Spawn(artName, host.transform);
-            if (v == null) return;
+            if (v == null) return false;
 
             ModelStyle.Apply(v); // URP re-tint so imported models are never pink
 
@@ -300,6 +349,7 @@ namespace StackUp
 
             var r = host.GetComponent<Renderer>();
             if (r != null) r.enabled = false;
+            return true;
         }
 
         private static float Inv(float v) => Mathf.Approximately(v, 0f) ? 1f : 1f / v;
@@ -313,6 +363,13 @@ namespace StackUp
                 cam = camGo.AddComponent<Camera>();
                 camGo.AddComponent<AudioListener>();
             }
+            // Soft sky background + enable URP post (color grading lives in
+            // Assets/DefaultVolumeProfile) so the scene isn't framed in black.
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.66f, 0.74f, 0.82f);
+            var camData = cam.GetUniversalAdditionalCameraData();
+            if (camData != null) camData.renderPostProcessing = true;
+
             var rig = cam.GetComponent<HighAngleCameraRig>();
             if (rig == null) rig = cam.gameObject.AddComponent<HighAngleCameraRig>();
             rig.Target = target;
