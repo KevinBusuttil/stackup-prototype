@@ -292,6 +292,8 @@ namespace StackUp
             var v = PrefabLibrary.Spawn(artName, host.transform);
             if (v == null) return;
 
+            ModelStyle.Apply(v); // URP re-tint so imported models are never pink
+
             Vector3 hs = host.transform.localScale;
             v.transform.localScale = new Vector3(Inv(hs.x), Inv(hs.y), Inv(hs.z));
             v.transform.localPosition = new Vector3(0f, -centerHeight * Inv(hs.y), 0f);

@@ -48,9 +48,23 @@ def material(name, color, rough=0.65, metal=0.0):
 def _finish(obj, mat, parent):
     obj.data.materials.clear()
     obj.data.materials.append(mat)
+    _bevel(obj)
     if parent:
         obj.parent = parent
     return obj
+
+
+def _bevel(obj, width=0.012, segments=1):
+    """Soft low-poly edges — much nicer silhouette than hard 90-degree cubes."""
+    try:
+        m = obj.modifiers.new(name="Bevel", type="BEVEL")
+        m.width = width
+        m.segments = segments
+        m.clamp_overlap = True
+        m.limit_method = "ANGLE"
+        m.angle_limit = math.radians(40)
+    except Exception:
+        pass
 
 
 def box(name, size, loc, mat, parent=None):
@@ -98,12 +112,13 @@ def export(name):
     bpy.ops.object.select_all(action="SELECT")
 
     glb = os.path.join(out, name + ".glb")
-    bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB", use_selection=True)
+    bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB", use_selection=True, export_apply=True)
     print("  exported", glb)
 
     try:
         fbx = os.path.join(out, name + ".fbx")
-        bpy.ops.export_scene.fbx(filepath=fbx, use_selection=True, apply_unit_scale=True, bake_space_transform=True)
+        bpy.ops.export_scene.fbx(filepath=fbx, use_selection=True, apply_unit_scale=True,
+                                 bake_space_transform=True, use_mesh_modifiers=True)
         print("  exported", fbx)
     except Exception as e:  # FBX exporter not available in this bpy build
         print("  (fbx export skipped:", e, ")")

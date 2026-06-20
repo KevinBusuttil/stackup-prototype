@@ -56,6 +56,8 @@ def picker_bot():
     lib.box("CapPeak", (0.30, 0.18, 0.04), (0, 0.28, 0.98), cap, root)
     lib.cyl("ArmL", 0.05, 0.42, (-0.30, 0, 0.55), m["body"], root, verts=10)
     lib.cyl("ArmR", 0.05, 0.42, (0.30, 0, 0.55), m["body"], root, verts=10)
+    lib.cyl("Antenna", 0.015, 0.22, (0.16, 0, 1.16), m["dark"], root, verts=6)
+    lib.sphere("AntennaTip", 0.04, (0.16, 0, 1.29), m["eye"], root, segs=8)
 
 
 def supervisor_bot():

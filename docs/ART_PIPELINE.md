@@ -60,13 +60,19 @@ overwrites them.
 3. Make a prefab per model under `Assets/_StackUp/Prefabs/` and add colliders
    (BoxCollider for props/modules, CapsuleCollider for robots).
 
-### Wiring into the runtime builder
+### Wiring into the runtime builder (automatic)
 
-`LevelBootstrap` currently builds the level from **primitives**. To use these
-models, give `LevelBootstrap` (or `SkuDefinition.VisualPrefab` / a rack/dock
-prefab field) references to the imported prefabs and instantiate them instead of
-`GameObject.CreatePrimitive`. This is an in-editor wiring step (M3 #34/#35
-completion) — the gameplay code does not change.
+Models placed in `Assets/_StackUp/Resources/StackUpArt/<Name>.fbx` are loaded at
+runtime by `PrefabLibrary` and overlaid on the gameplay primitives by
+`LevelBootstrap.AttachVisual` (the placeholder mesh is hidden, its collider
+kept). Currently wired: **PickerBot** (player), **VerificationStation**,
+**DockLaneMarker**. Drop more models in and add an `AttachVisual(...)` call to
+extend coverage (racks, pallet, items).
+
+`ModelStyle.Apply` re-tints each model with URP materials by matching the source
+material name, so imported FBX never render **pink** and screen/eye faces glow —
+no in-editor material conversion needed. Bevelled edges come from the generator
+(`_bevel` in `stackup_buildlib.py`).
 
 ## Modularity & performance rules (Sections 8, 23)
 
