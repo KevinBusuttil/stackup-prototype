@@ -64,15 +64,21 @@ overwrites them.
 
 Models placed in `Assets/_StackUp/Resources/StackUpArt/<Name>.fbx` are loaded at
 runtime by `PrefabLibrary` and overlaid on the gameplay primitives by
-`LevelBootstrap.AttachVisual` (the placeholder mesh is hidden, its collider
-kept). Currently wired: **PickerBot** (player), **VerificationStation**,
-**DockLaneMarker**. Drop more models in and add an `AttachVisual(...)` call to
-extend coverage (racks, pallet, items).
+`LevelBootstrap.AttachArt`. **Prefab-or-procedural**: if the prefab exists it is
+used; otherwise a procedural low-poly fallback (`ArtKit`) is built so the scene
+still looks like a toy warehouse. Either way the placeholder mesh is hidden and
+its collider kept, so gameplay is identical with or without imported assets.
+
+Hosts wired: **PickerBot** (player), **RackBay** (rack slots), **DockLaneMarker**
+(docks), **VerificationStation**. Add more by calling
+`AttachArt(host, "<Name>", centerHeight, fallback)`. SKU→prop mapping for
+boxes/bags/cases is available via `ArtKit.PrefabForPackaging`.
 
 `ModelStyle.Apply` re-tints each model with URP materials by matching the source
 material name, so imported FBX never render **pink** and screen/eye faces glow —
 no in-editor material conversion needed. Bevelled edges come from the generator
-(`_bevel` in `stackup_buildlib.py`).
+(`_bevel` in `stackup_buildlib.py`). The overall look/lighting target lives in
+[`VISUAL_VERTICAL_SLICE_PLAN.md`](./VISUAL_VERTICAL_SLICE_PLAN.md).
 
 ## Modularity & performance rules (Sections 8, 23)
 

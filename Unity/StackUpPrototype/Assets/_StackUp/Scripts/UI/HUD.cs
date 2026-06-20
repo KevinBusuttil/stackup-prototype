@@ -50,12 +50,32 @@ namespace StackUp
             UiKit.ApplyScale(scaler);
             canvasGo.AddComponent<GraphicRaycaster>();
 
+            // Translucent backing panels (added first = drawn behind) keep the
+            // dense info legible over a bright scene at 720p / Steam Deck.
+            MakePanel(canvas.transform, new Vector2(12, -12), new Vector2(0, 1), new Vector2(644, 324));
+            MakePanel(canvas.transform, new Vector2(-12, -12), new Vector2(1, 1), new Vector2(300, 152));
+
             ordersText = MakeText(canvas.transform, "Orders", new Vector2(24, -24), TextAlignmentOptions.TopLeft, 24, new Vector2(0, 1), new Vector2(620, 300));
             toteText = MakeText(canvas.transform, "Tote", new Vector2(24, 24), TextAlignmentOptions.BottomLeft, 22, new Vector2(0, 0), new Vector2(620, 120));
             scoreText = MakeText(canvas.transform, "Score", new Vector2(-24, -24), TextAlignmentOptions.TopRight, 26, new Vector2(1, 1), new Vector2(420, 140));
             promptText = MakeText(canvas.transform, "Prompt", new Vector2(0, 70), TextAlignmentOptions.Bottom, 30, new Vector2(0.5f, 0), new Vector2(900, 50));
             verifyText = MakeText(canvas.transform, "Verify", new Vector2(0, 150), TextAlignmentOptions.Center, 30, new Vector2(0.5f, 0.5f), new Vector2(900, 300));
             verifyText.text = "";
+        }
+
+        private static void MakePanel(Transform parent, Vector2 anchoredPos, Vector2 anchor, Vector2 sizeDelta)
+        {
+            var go = new GameObject("Panel");
+            go.transform.SetParent(parent, false);
+            var img = go.AddComponent<Image>();
+            img.color = new Color(0.07f, 0.08f, 0.10f, 0.55f);
+            img.raycastTarget = false;
+            var rt = img.rectTransform;
+            rt.anchorMin = anchor;
+            rt.anchorMax = anchor;
+            rt.pivot = anchor;
+            rt.sizeDelta = sizeDelta;
+            rt.anchoredPosition = anchoredPos;
         }
 
         private static TextMeshProUGUI MakeText(Transform parent, string name, Vector2 anchoredPos,
